@@ -1,0 +1,5 @@
+[[redirects]]
+  from = "/bot-preview/*"
+  to = "/.netlify/functions/bot-proxy/:splat"
+  status = 200
+  force = true
