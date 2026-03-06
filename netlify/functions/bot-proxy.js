@@ -16,22 +16,30 @@ const mimeTypes = {
 };
 
 exports.handler = async (event) => {
-  // Log the full path for debugging (visible in Netlify function logs)
-  console.log('Full event.path:', event.path);
+  console.log('Proxy function invoked with path:', event.path);
 
-  // Expected internal path: /.netlify/functions/bot-proxy/botName/file.html
-  // Split on '/bot-proxy/'
-  const pathParts = event.path.split('/bot-proxy/');
-  console.log('pathParts:', pathParts);
-
-  if (pathParts.length < 2) {
+  // Determine which prefix to split on
+  let prefix;
+  if (event.path.includes('/bot-preview/')) {
+    prefix = '/bot-preview/';
+  } else if (event.path.includes('/bot-proxy/')) {
+    prefix = '/bot-proxy/';
+  } else {
     return {
       statusCode: 400,
-      body: `Invalid path: expected '/bot-proxy/' in URL, got ${event.path}`,
+      body: `Invalid path: expected '/bot-preview/' or '/bot-proxy/' in URL, got ${event.path}`,
     };
   }
 
-  const fullPath = pathParts[1]; // e.g., "adddd/index.html"
+  const pathParts = event.path.split(prefix);
+  if (pathParts.length < 2) {
+    return {
+      statusCode: 400,
+      body: `Could not extract path after '${prefix}'`,
+    };
+  }
+
+  const fullPath = pathParts[1]; // e.g., "dude5/index.html"
   console.log('fullPath:', fullPath);
 
   const slashIndex = fullPath.indexOf('/');
@@ -57,7 +65,6 @@ exports.handler = async (event) => {
   const token = process.env.GITHUB_TOKEN;
   const owner = process.env.GITHUB_OWNER;
   const repo = process.env.GITHUB_REPO;
-  const branch = 'main'; // Change to 'master' if needed
 
   if (!token || !owner || !repo) {
     return { statusCode: 500, body: 'Missing GitHub configuration' };
@@ -66,6 +73,11 @@ exports.handler = async (event) => {
   const octokit = new Octokit({ auth: token });
 
   try {
+    // Get the default branch dynamically
+    const { data: repoData } = await octokit.repos.get({ owner, repo });
+    const defaultBranch = repoData.default_branch;
+    console.log('Default branch:', defaultBranch);
+
     const githubPath = `USER_CREATED_BOTS/${botName}/${filePath}`;
     console.log('Fetching from GitHub:', githubPath);
 
@@ -73,7 +85,7 @@ exports.handler = async (event) => {
       owner,
       repo,
       path: githubPath,
-      ref: branch,
+      ref: defaultBranch,
     });
 
     if (!data.content) {
