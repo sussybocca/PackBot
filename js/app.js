@@ -2,7 +2,7 @@
 // Uses global functions from github-api.js and bot-generator.js
 
 document.addEventListener('DOMContentLoaded', () => {
-    // ========== MODE SWITCHING ==========
+    // ========== MODE SWITCHING (only on editor page) ==========
     const simpleBtn = document.getElementById('simple-mode-btn');
     const codeBtn = document.getElementById('code-mode-btn');
     const simplePanel = document.getElementById('simple-panel');
@@ -164,9 +164,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========== PREVIEW BOT ==========
     window.previewBot = function(botName) {
         const iframe = document.getElementById('preview-frame');
+        const url = `/bot-preview/${botName}/index.html`;
+        
         if (iframe) {
-            // Use the proxy endpoint (requires netlify.toml redirect and bot-proxy function)
-            iframe.src = `/bot-preview/${botName}/index.html`;
+            // We're on the editor page – load in the iframe
+            iframe.src = url;
+        } else {
+            // We're on the main page or somewhere without an iframe – open in new tab
+            window.open(url, '_blank');
         }
     };
 
