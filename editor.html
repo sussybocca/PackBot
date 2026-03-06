@@ -6,69 +6,115 @@
     <title>PackBot – Editor</title>
     <link rel="stylesheet" href="/css/style.css">
     <style>
-        /* Custom Context Menu */
+        /* Enhanced Context Menu */
         #context-menu {
             position: absolute;
-            background: rgba(30, 35, 60, 0.95);
+            background: rgba(30, 35, 60, 0.98);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 0.5rem 0;
-            min-width: 180px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-            z-index: 1000;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            padding: 0.6rem 0;
+            min-width: 260px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            z-index: 10000;
             display: none;
-            font-family: 'Inter', sans-serif;
-        }
-        #context-menu ul {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-        #context-menu li {
-            padding: 0.7rem 1.5rem;
+            font-family: 'Inter', system-ui, sans-serif;
             color: #eef2ff;
+        }
+        #context-menu .menu-section {
+            padding: 0.3rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        #context-menu .menu-section:last-child {
+            border-bottom: none;
+        }
+        #context-menu .menu-header {
+            padding: 0.5rem 1.2rem 0.3rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #a5b4fc;
+            font-weight: 600;
+        }
+        #context-menu .menu-item {
+            padding: 0.6rem 1.5rem;
             cursor: pointer;
-            transition: background 0.2s;
-            font-size: 0.95rem;
+            transition: background 0.15s;
+            font-size: 0.9rem;
             display: flex;
             align-items: center;
             gap: 0.8rem;
         }
-        #context-menu li:hover {
-            background: rgba(79, 70, 229, 0.4);
+        #context-menu .menu-item:hover {
+            background: rgba(79, 70, 229, 0.5);
         }
-        #context-menu li.disabled {
+        #context-menu .menu-item.disabled {
             opacity: 0.4;
             pointer-events: none;
+        }
+        #context-menu .menu-item .shortcut {
+            margin-left: auto;
+            color: #7f8c8d;
+            font-size: 0.8rem;
         }
         #context-menu hr {
             border: none;
             border-top: 1px solid rgba(255,255,255,0.1);
             margin: 0.3rem 0;
         }
-        /* Custom window top bar (will be used in viewer.html) */
-        .custom-window-bar {
+        /* Modal base style */
+        .packbot-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             background: #1e1f2b;
             color: white;
-            padding: 0.8rem 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            border-bottom: 1px solid #333;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            z-index: 10001;
+            max-width: 600px;
+            width: 90%;
+            border: 1px solid #4f46e5;
             font-family: 'Inter', sans-serif;
         }
-        .custom-window-bar button {
+        .packbot-modal h2 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .packbot-modal label {
+            display: block;
+            margin-bottom: 1rem;
+        }
+        .packbot-modal select, .packbot-modal input, .packbot-modal textarea {
+            width: 100%;
+            padding: 0.5rem;
             background: #2d2f3a;
+            color: white;
+            border: 1px solid #4f46e5;
+            border-radius: 6px;
+            margin-top: 0.3rem;
+        }
+        .packbot-modal button {
+            background: #4f46e5;
             border: none;
             color: white;
-            padding: 0.4rem 1rem;
-            border-radius: 6px;
+            padding: 0.5rem 1.5rem;
+            border-radius: 30px;
             cursor: pointer;
             transition: background 0.2s;
         }
-        .custom-window-bar button:hover {
-            background: #4f46e5;
+        .packbot-modal button:hover {
+            background: #6366f1;
+        }
+        .packbot-modal .button-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
         }
     </style>
 </head>
@@ -117,28 +163,21 @@
         </section>
     </main>
 
-    <!-- Custom Context Menu -->
-    <div id="context-menu">
-        <ul>
-            <li id="menu-rename">✏️ Rename</li>
-            <li id="menu-newtab">📂 Open in new tab</li>
-            <li id="menu-custom">🖥️ Open in custom window</li>
-        </ul>
-    </div>
+    <!-- Custom Context Menu (container) -->
+    <div id="context-menu"></div>
 
     <!-- Original scripts -->
     <script src="/js/github-api.js"></script>
     <script src="/js/bot-generator.js"></script>
     <script src="/js/app.js"></script>
 
-    <!-- Embedded feature: custom context menu & encrypted URLs -->
+    <!-- Embedded: advanced context menu & encrypted URLs & settings integration -->
     <script>
         (function() {
-            // ---------- Helper: encrypt/decrypt (simple base64 with salt) ----------
-            const SALT = 'packbot_salt_2026'; // can be any string
+            // ---------- Helper: encrypt/decrypt ----------
+            const SALT = 'packbot_salt_2026';
             function encryptPath(botName, filePath) {
                 const data = `${botName}|${filePath}`;
-                // Simple obfuscation: base64 after adding salt (not secure, just looks random)
                 const salted = SALT + data;
                 return btoa(salted).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
             }
@@ -153,82 +192,500 @@
                 }
             }
 
-            // ---------- Context Menu Logic ----------
-            const menu = document.getElementById('context-menu');
-            const menuRename = document.getElementById('menu-rename');
-            const menuNewtab = document.getElementById('menu-newtab');
-            const menuCustom = document.getElementById('menu-custom');
-
-            let currentTab = null; // The tab element that was right-clicked
-            let currentBotName = ''; // We'll get from input field
-
-            // Hide menu on click elsewhere
-            document.addEventListener('click', () => menu.style.display = 'none');
-            document.addEventListener('contextmenu', (e) => {
-                // Prevent default only if right-click on a file tab (but not add-file button)
-                const tab = e.target.closest('.file-tab');
-                if (!tab || tab.id === 'add-file-btn') return; // let default menu for others
-                e.preventDefault();
-                currentTab = tab;
-                // Get current bot name from input
-                currentBotName = document.getElementById('code-bot-name').value.trim();
-                if (!currentBotName) {
-                    alert('Please enter a bot name first.');
-                    return;
-                }
-                // Position menu
-                menu.style.left = e.pageX + 'px';
-                menu.style.top = e.pageY + 'px';
-                menu.style.display = 'block';
-            });
-
-            // Rename
-            menuRename.addEventListener('click', () => {
-                if (!currentTab) return;
-                const oldName = currentTab.dataset.file;
-                const newName = prompt('Enter new file name (including extension):', oldName);
-                if (!newName || newName === oldName) return;
-                // Update tab
-                currentTab.dataset.file = newName;
-                currentTab.textContent = newName;
-                // Update currentFiles in app.js (need to access global currentFiles)
-                if (window.currentFiles && window.currentFiles.hasOwnProperty(oldName)) {
-                    window.currentFiles[newName] = window.currentFiles[oldName];
-                    delete window.currentFiles[oldName];
-                }
-                // If this was the active tab, update editor content
-                if (currentTab.classList.contains('active')) {
-                    document.getElementById('file-editor').value = window.currentFiles[newName] || '';
-                    window.currentFile = newName;
-                }
-                menu.style.display = 'none';
-            });
-
-            // Open in new tab (encrypted URL)
-            menuNewtab.addEventListener('click', () => {
-                if (!currentTab || !currentBotName) return;
-                const file = currentTab.dataset.file;
-                const encrypted = encryptPath(currentBotName, file);
-                const url = `/BotLocal/${encrypted}`;
-                window.open(url, '_blank');
-                menu.style.display = 'none';
-            });
-
-            // Open in custom window
-            menuCustom.addEventListener('click', () => {
-                if (!currentTab || !currentBotName) return;
-                const file = currentTab.dataset.file;
-                const encrypted = encryptPath(currentBotName, file);
-                // Open a popup with custom viewer
-                const viewerUrl = `/file-viewer.html?file=${encrypted}`;
-                const popup = window.open(viewerUrl, 'customViewer', 'width=900,height=600,scrollbars=yes,resizable=yes');
-                if (popup) popup.focus();
-                menu.style.display = 'none';
-            });
-
-            // Expose encrypt/decrypt globally for viewer page
             window.encryptPath = encryptPath;
             window.decryptPath = decryptPath;
+
+            // ---------- DOM Elements ----------
+            const menuEl = document.getElementById('context-menu');
+            const fileTabsContainer = document.getElementById('file-tabs-container');
+            const codeBotNameInput = document.getElementById('code-bot-name');
+            const fileEditor = document.getElementById('file-editor');
+            const previewFrame = document.getElementById('preview-frame');
+            const simpleBotNameInput = document.getElementById('bot-name');
+            const simpleDescription = document.getElementById('bot-description');
+            const generateBtn = document.getElementById('generate-bot');
+
+            // ---------- Settings Management ----------
+            const DEFAULT_SETTINGS = {
+                theme: 'dark',
+                fontSize: 14,
+                autosave: true,
+                botPersonality: 'friendly',
+                botResponseStyle: 'casual',
+                botFontFamily: 'Arial, sans-serif',
+                botPrimaryColor: '#4f46e5',
+                botSecondaryColor: '#6c757d',
+                botLanguage: 'en',
+                botTemperature: 0.7,
+                botMaxTokens: 150,
+                botEnableEmoji: true,
+                botEnableMarkdown: false
+            };
+
+            function loadSettings() {
+                const saved = {};
+                for (let key in DEFAULT_SETTINGS) {
+                    const val = localStorage.getItem('packbot_' + key);
+                    if (val !== null) {
+                        if (typeof DEFAULT_SETTINGS[key] === 'boolean') {
+                            saved[key] = val === 'true';
+                        } else if (typeof DEFAULT_SETTINGS[key] === 'number') {
+                            saved[key] = Number(val);
+                        } else {
+                            saved[key] = val;
+                        }
+                    } else {
+                        saved[key] = DEFAULT_SETTINGS[key];
+                    }
+                }
+                return saved;
+            }
+
+            function saveSettings(settings) {
+                for (let key in settings) {
+                    localStorage.setItem('packbot_' + key, settings[key]);
+                }
+                applySettingsToUI(settings);
+            }
+
+            function applySettingsToUI(settings) {
+                // Apply theme class to body
+                document.body.classList.remove('theme-light', 'theme-dark', 'theme-system');
+                document.body.classList.add(`theme-${settings.theme}`);
+                // Apply font size to editor
+                if (fileEditor) fileEditor.style.fontSize = settings.fontSize + 'px';
+                // Apply font family to editor
+                if (fileEditor) fileEditor.style.fontFamily = settings.botFontFamily;
+                // You could also set CSS variables, etc.
+            }
+
+            // Apply settings on load
+            applySettingsToUI(loadSettings());
+
+            // ---------- Enhanced Bot Generator (with settings) ----------
+            const originalGenerator = window.generateBotFromDescription;
+            window.generateBotFromDescription = function(description, botName) {
+                const settings = loadSettings();
+                const files = originalGenerator(description, botName);
+
+                // Enhance the generated files with settings
+                // Modify logic.txt
+                let logic = files['logic.txt'];
+                logic += `\n# Bot personality: ${settings.botPersonality}\n`;
+                logic += `# Response style: ${settings.botResponseStyle}\n`;
+                logic += `# Language: ${settings.botLanguage}\n`;
+                if (settings.botEnableEmoji) logic += `# Emojis: enabled\n`;
+                files['logic.txt'] = logic;
+
+                // Modify script.js to use settings
+                let script = files['script.js'];
+                // Inject settings into the bot's JS (as global variables)
+                const settingsJS = `
+// Bot settings (from PackBot)
+const BOT_SETTINGS = ${JSON.stringify(settings, null, 2)};
+`;
+                script = settingsJS + script;
+                // Replace the response function to use temperature etc. (simplified)
+                script = script.replace(
+                    /function getResponse\(message\) {/,
+                    `function getResponse(message) {
+                        if (BOT_SETTINGS.botEnableEmoji) {
+                            // add emoji logic (example)
+                        }`
+                );
+                files['script.js'] = script;
+
+                // Modify style.css with colors and font
+                let css = files['style.css'];
+                css += `\n/* Bot theme */\n`;
+                css += `body { font-family: ${settings.botFontFamily}; }\n`;
+                css += `.chat-container { border-color: ${settings.botPrimaryColor}; }\n`;
+                css += `header { background: ${settings.botPrimaryColor}; }\n`;
+                css += `.message.user { background: ${settings.botPrimaryColor}; }\n`;
+                css += `.message.bot { background: ${settings.botSecondaryColor}; }\n`;
+                files['style.css'] = css;
+
+                return files;
+            };
+
+            // ---------- Context Menu Builders ----------
+            function createMenuItem(label, onClick, shortcut = '', icon = '', disabled = false) {
+                const item = document.createElement('div');
+                item.className = 'menu-item' + (disabled ? ' disabled' : '');
+                item.innerHTML = icon ? `<span>${icon}</span>${label}` : label;
+                if (shortcut) {
+                    const shortSpan = document.createElement('span');
+                    shortSpan.className = 'shortcut';
+                    shortSpan.textContent = shortcut;
+                    item.appendChild(shortSpan);
+                }
+                if (!disabled) {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        onClick();
+                        menuEl.style.display = 'none';
+                    });
+                }
+                return item;
+            }
+
+            function createMenuHeader(text) {
+                const header = document.createElement('div');
+                header.className = 'menu-header';
+                header.textContent = text;
+                return header;
+            }
+
+            function createSeparator() {
+                return document.createElement('hr');
+            }
+
+            // ---------- Show Context Menu ----------
+            function showContextMenu(e) {
+                e.preventDefault();
+
+                const tab = e.target.closest('.file-tab');
+                const isFileTab = !!tab && tab.id !== 'add-file-btn';
+                const isInput = e.target.closest('input[type="text"]');
+                const isEditor = e.target.id === 'file-editor';
+                const isPreview = e.target.closest('#preview-frame');
+                const isEmptySpace = !isFileTab && !isInput && !isEditor && !isPreview;
+
+                const currentBotName = codeBotNameInput.value.trim() || simpleBotNameInput.value.trim();
+
+                menuEl.innerHTML = '';
+
+                if (isFileTab) {
+                    // ---------- FILE TAB CONTEXT (many options) ----------
+                    const fileName = tab.dataset.file;
+                    currentTab = tab;
+
+                    menuEl.appendChild(createMenuHeader('FILE'));
+                    menuEl.appendChild(createMenuItem('✏️ Rename', () => {
+                        const newName = prompt('New file name:', fileName);
+                        if (!newName || newName === fileName) return;
+                        tab.dataset.file = newName;
+                        tab.textContent = newName;
+                        if (window.currentFiles && window.currentFiles[fileName]) {
+                            window.currentFiles[newName] = window.currentFiles[fileName];
+                            delete window.currentFiles[fileName];
+                        }
+                        if (tab.classList.contains('active')) {
+                            fileEditor.value = window.currentFiles[newName] || '';
+                            window.currentFile = newName;
+                        }
+                    }, 'F2'));
+
+                    menuEl.appendChild(createMenuItem('📂 Open in new tab', () => {
+                        if (!currentBotName) return alert('Enter bot name first');
+                        const encrypted = encryptPath(currentBotName, fileName);
+                        window.open(`/BotLocal/${encrypted}`, '_blank');
+                    }, 'Ctrl+O'));
+
+                    menuEl.appendChild(createMenuItem('🖥️ Open in custom window', () => {
+                        if (!currentBotName) return alert('Enter bot name first');
+                        const encrypted = encryptPath(currentBotName, fileName);
+                        window.open(`/file-viewer.html?file=${encrypted}`, 'customViewer', 'width=900,height=600,scrollbars=yes,resizable=yes');
+                    }, 'Ctrl+Shift+O'));
+
+                    menuEl.appendChild(createMenuItem('🗑️ Delete file', () => {
+                        if (!confirm(`Delete ${fileName}?`)) return;
+                        tab.remove();
+                        if (window.currentFiles) delete window.currentFiles[fileName];
+                        const remaining = document.querySelectorAll('.file-tab');
+                        if (remaining.length) {
+                            remaining[0].classList.add('active');
+                            window.currentFile = remaining[0].dataset.file;
+                            fileEditor.value = window.currentFiles[window.currentFile] || '';
+                        } else {
+                            fileEditor.value = '';
+                        }
+                    }, 'Del'));
+
+                    menuEl.appendChild(createMenuItem('📋 Copy filename', () => navigator.clipboard.writeText(fileName), 'Ctrl+C'));
+                    menuEl.appendChild(createMenuItem('🔗 Copy path (encrypted)', () => {
+                        if (!currentBotName) return alert('Enter bot name first');
+                        navigator.clipboard.writeText(`/BotLocal/${encryptPath(currentBotName, fileName)}`);
+                    }));
+
+                    menuEl.appendChild(createSeparator());
+                    menuEl.appendChild(createMenuHeader('ADVANCED'));
+                    menuEl.appendChild(createMenuItem('🔄 Duplicate file', () => {
+                        const base = fileName.replace(/\.[^/.]+$/, '');
+                        const ext = fileName.substring(fileName.lastIndexOf('.'));
+                        let newName = prompt('Duplicate as:', `${base}-copy${ext}`);
+                        if (!newName || newName === fileName) return;
+                        if (window.currentFiles && window.currentFiles[fileName]) {
+                            window.currentFiles[newName] = window.currentFiles[fileName];
+                        }
+                        const newTab = document.createElement('button');
+                        newTab.className = 'file-tab';
+                        newTab.dataset.file = newName;
+                        newTab.textContent = newName;
+                        newTab.addEventListener('click', () => {
+                            document.querySelectorAll('.file-tab').forEach(t => t.classList.remove('active'));
+                            newTab.classList.add('active');
+                            fileEditor.value = window.currentFiles[newName] || '';
+                            window.currentFile = newName;
+                        });
+                        fileTabsContainer.insertBefore(newTab, document.getElementById('add-file-btn'));
+                    }, 'Ctrl+D'));
+
+                    menuEl.appendChild(createMenuItem('⬇️ Download file', () => {
+                        const content = window.currentFiles?.[fileName] || fileEditor.value;
+                        const blob = new Blob([content], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileName;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }));
+
+                    menuEl.appendChild(createMenuItem('🌐 Show on GitHub', () => {
+                        if (!currentBotName) return alert('Enter bot name first');
+                        const owner = 'sussybocca'; // should be dynamic, but hardcode for now
+                        const repo = 'packbot-user-bots';
+                        window.open(`https://github.com/${owner}/${repo}/blob/main/USER_CREATED_BOTS/${currentBotName}/${fileName}`, '_blank');
+                    }));
+
+                } else if (isInput) {
+                    // ---------- INPUT FIELD CONTEXT ----------
+                    menuEl.appendChild(createMenuHeader('BOT NAME'));
+                    menuEl.appendChild(createMenuItem('✅ Validate', () => {
+                        const name = codeBotNameInput.value.trim();
+                        const safe = name.replace(/[^a-zA-Z0-9_-]/g, '');
+                        if (name !== safe) alert(`Invalid chars. Suggested: "${safe}"`);
+                        else alert('Name is valid');
+                    }));
+                    menuEl.appendChild(createMenuItem('📋 Copy', () => navigator.clipboard.writeText(codeBotNameInput.value)));
+                    menuEl.appendChild(createMenuItem('🎲 Random', () => {
+                        const adj = ['cool','smart','fast','happy','super','awesome','tiny'];
+                        const noun = ['bot','assistant','friend','helper','agent','droid'];
+                        codeBotNameInput.value = adj[Math.floor(Math.random()*adj.length)] + '-' + noun[Math.floor(Math.random()*noun.length)] + '-' + Math.floor(Math.random()*100);
+                    }));
+                    menuEl.appendChild(createMenuItem('🔍 Check availability', () => {
+                        alert('Check GitHub for existing bot folders (not implemented yet)');
+                    }));
+
+                } else if (isEditor) {
+                    // ---------- EDITOR CONTEXT ----------
+                    menuEl.appendChild(createMenuHeader('EDITOR'));
+                    menuEl.appendChild(createMenuItem('✂️ Cut', () => document.execCommand('cut'), 'Ctrl+X'));
+                    menuEl.appendChild(createMenuItem('📋 Copy', () => document.execCommand('copy'), 'Ctrl+C'));
+                    menuEl.appendChild(createMenuItem('📋 Paste', () => document.execCommand('paste'), 'Ctrl+V'));
+                    menuEl.appendChild(createMenuItem('🗑️ Clear', () => { if(confirm('Clear?')) fileEditor.value = ''; }));
+                    menuEl.appendChild(createMenuItem('🔍 Find...', () => alert('Find feature coming'), 'Ctrl+F'));
+                    menuEl.appendChild(createMenuItem('🔄 Replace...', () => alert('Replace coming'), 'Ctrl+H'));
+                    menuEl.appendChild(createMenuItem('📏 Toggle word wrap', () => {
+                        fileEditor.style.whiteSpace = fileEditor.style.whiteSpace === 'pre-wrap' ? 'pre' : 'pre-wrap';
+                    }));
+
+                } else if (isEmptySpace) {
+                    // ---------- GLOBAL CONTEXT (tons of options) ----------
+                    menuEl.appendChild(createMenuHeader('GLOBAL'));
+                    menuEl.appendChild(createMenuItem('📄 New file', () => document.getElementById('add-file-btn').click(), 'Ctrl+N'));
+                    menuEl.appendChild(createMenuItem('🔄 Refresh bot list', () => window.loadBotList?.(), 'F5'));
+                    menuEl.appendChild(createMenuItem('🚀 Push current bot', () => document.getElementById('push-code-bot').click(), 'Ctrl+Shift+P', '', !currentBotName));
+                    menuEl.appendChild(createMenuItem('👁️ Preview bot', () => {
+                        if (!currentBotName) return alert('Enter bot name first');
+                        window.previewBot?.(currentBotName);
+                    }, 'Ctrl+P', '', !currentBotName));
+                    menuEl.appendChild(createMenuItem('📦 Export bot as ZIP', () => alert('ZIP export coming')));
+                    menuEl.appendChild(createMenuItem('📥 Import bot from ZIP', () => alert('Import coming')));
+                    menuEl.appendChild(createMenuItem('🗂️ Clone bot', () => {
+                        const name = prompt('New bot name (copy of current):');
+                        if (name && currentBotName) {
+                            // This would need to copy files via API – placeholder
+                            alert(`Clone from ${currentBotName} to ${name} (not implemented)`);
+                        }
+                    }));
+
+                    menuEl.appendChild(createSeparator());
+                    menuEl.appendChild(createMenuHeader('BOT OPERATIONS'));
+                    menuEl.appendChild(createMenuItem('🧹 Clear all bots', () => {
+                        if (confirm('Delete ALL bots? This cannot be undone.')) {
+                            // Call delete for each? Too heavy. Placeholder.
+                            alert('Clear all not implemented (would call GitHub API for each)');
+                        }
+                    }));
+                    menuEl.appendChild(createMenuItem('📊 Bot stats', () => alert('Stats: ...')));
+                    menuEl.appendChild(createMenuItem('🔧 Run linter', () => alert('Linting not yet')));
+
+                    menuEl.appendChild(createSeparator());
+                    menuEl.appendChild(createMenuHeader('SETTINGS'));
+                    menuEl.appendChild(createMenuItem('⚙️ Preferences', showSettingsModal));
+                    menuEl.appendChild(createMenuItem('🎨 Theme', () => {
+                        const themes = ['dark', 'light', 'system'];
+                        const current = loadSettings().theme;
+                        const next = themes[(themes.indexOf(current) + 1) % themes.length];
+                        const settings = loadSettings();
+                        settings.theme = next;
+                        saveSettings(settings);
+                    }));
+                    menuEl.appendChild(createMenuItem('🔤 Editor font size', () => {
+                        const newSize = prompt('Font size (px):', loadSettings().fontSize);
+                        if (newSize) {
+                            const settings = loadSettings();
+                            settings.fontSize = parseInt(newSize);
+                            saveSettings(settings);
+                        }
+                    }));
+
+                    menuEl.appendChild(createSeparator());
+                    menuEl.appendChild(createMenuHeader('HELP'));
+                    menuEl.appendChild(createMenuItem('❓ About PackBot', showAboutModal));
+                    menuEl.appendChild(createMenuItem('📖 Documentation', () => window.open('https://github.com/your-repo/wiki', '_blank')));
+                    menuEl.appendChild(createMenuItem('⌨️ Keyboard shortcuts', () => alert('Shortcuts: F2 rename, Ctrl+O open, etc.')));
+                }
+
+                // Position and show menu
+                menuEl.style.left = e.pageX + 'px';
+                menuEl.style.top = e.pageY + 'px';
+                menuEl.style.display = 'block';
+            }
+
+            // ---------- Settings Modal (with MANY options) ----------
+            function showSettingsModal() {
+                const settings = loadSettings();
+
+                const modal = document.createElement('div');
+                modal.className = 'packbot-modal';
+                modal.innerHTML = `
+                    <h2>⚙️ Preferences <span style="margin-left:auto; font-size:0.8rem; color:#a5b4fc">PackBot</span></h2>
+                    <div style="max-height:70vh; overflow-y:auto; padding-right:0.5rem;">
+                        <label>Theme
+                            <select id="settings-theme">
+                                <option value="dark" ${settings.theme==='dark'?'selected':''}>Dark</option>
+                                <option value="light" ${settings.theme==='light'?'selected':''}>Light</option>
+                                <option value="system" ${settings.theme==='system'?'selected':''}>System</option>
+                            </select>
+                        </label>
+                        <label>Editor Font Size <input type="number" id="settings-fontsize" value="${settings.fontSize}" min="8" max="24"></label>
+                        <label>Autosave <input type="checkbox" id="settings-autosave" ${settings.autosave?'checked':''}></label>
+
+                        <h3 style="margin:1rem 0 0.5rem; color:#a5b4fc;">Bot Defaults</h3>
+                        <label>Personality
+                            <select id="settings-botPersonality">
+                                <option value="friendly" ${settings.botPersonality==='friendly'?'selected':''}>Friendly</option>
+                                <option value="professional" ${settings.botPersonality==='professional'?'selected':''}>Professional</option>
+                                <option value="humorous" ${settings.botPersonality==='humorous'?'selected':''}>Humorous</option>
+                                <option value="sarcastic" ${settings.botPersonality==='sarcastic'?'selected':''}>Sarcastic</option>
+                            </select>
+                        </label>
+                        <label>Response Style
+                            <select id="settings-botResponseStyle">
+                                <option value="casual" ${settings.botResponseStyle==='casual'?'selected':''}>Casual</option>
+                                <option value="formal" ${settings.botResponseStyle==='formal'?'selected':''}>Formal</option>
+                                <option value="concise" ${settings.botResponseStyle==='concise'?'selected':''}>Concise</option>
+                                <option value="detailed" ${settings.botResponseStyle==='detailed'?'selected':''}>Detailed</option>
+                            </select>
+                        </label>
+                        <label>Font Family <input type="text" id="settings-botFontFamily" value="${settings.botFontFamily}"></label>
+                        <label>Primary Color <input type="color" id="settings-botPrimaryColor" value="${settings.botPrimaryColor}"></label>
+                        <label>Secondary Color <input type="color" id="settings-botSecondaryColor" value="${settings.botSecondaryColor}"></label>
+                        <label>Language
+                            <select id="settings-botLanguage">
+                                <option value="en" ${settings.botLanguage==='en'?'selected':''}>English</option>
+                                <option value="es" ${settings.botLanguage==='es'?'selected':''}>Spanish</option>
+                                <option value="fr" ${settings.botLanguage==='fr'?'selected':''}>French</option>
+                                <option value="de" ${settings.botLanguage==='de'?'selected':''}>German</option>
+                            </select>
+                        </label>
+                        <label>Temperature (creativity) <input type="number" id="settings-botTemperature" step="0.1" min="0" max="2" value="${settings.botTemperature}"></label>
+                        <label>Max Tokens <input type="number" id="settings-botMaxTokens" value="${settings.botMaxTokens}"></label>
+                        <label><input type="checkbox" id="settings-botEnableEmoji" ${settings.botEnableEmoji?'checked':''}> Enable emojis</label>
+                        <label><input type="checkbox" id="settings-botEnableMarkdown" ${settings.botEnableMarkdown?'checked':''}> Enable Markdown</label>
+                    </div>
+                    <div class="button-group">
+                        <button id="settings-save">Save</button>
+                        <button id="settings-cancel">Cancel</button>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+
+                const closeModal = () => modal.remove();
+
+                document.getElementById('settings-cancel').addEventListener('click', closeModal);
+                document.getElementById('settings-save').addEventListener('click', () => {
+                    const newSettings = {
+                        theme: document.getElementById('settings-theme').value,
+                        fontSize: parseInt(document.getElementById('settings-fontsize').value),
+                        autosave: document.getElementById('settings-autosave').checked,
+                        botPersonality: document.getElementById('settings-botPersonality').value,
+                        botResponseStyle: document.getElementById('settings-botResponseStyle').value,
+                        botFontFamily: document.getElementById('settings-botFontFamily').value,
+                        botPrimaryColor: document.getElementById('settings-botPrimaryColor').value,
+                        botSecondaryColor: document.getElementById('settings-botSecondaryColor').value,
+                        botLanguage: document.getElementById('settings-botLanguage').value,
+                        botTemperature: parseFloat(document.getElementById('settings-botTemperature').value),
+                        botMaxTokens: parseInt(document.getElementById('settings-botMaxTokens').value),
+                        botEnableEmoji: document.getElementById('settings-botEnableEmoji').checked,
+                        botEnableMarkdown: document.getElementById('settings-botEnableMarkdown').checked
+                    };
+                    saveSettings(newSettings);
+                    closeModal();
+                });
+
+                // Click outside to close
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeModal();
+                });
+            }
+
+            // ---------- About Modal ----------
+            function showAboutModal() {
+                const modal = document.createElement('div');
+                modal.className = 'packbot-modal';
+                modal.innerHTML = `
+                    <h2 style="text-align:center;">🤖 PackBot</h2>
+                    <p style="color:#a5b4fc; text-align:center;">Version 2.0.0</p>
+                    <p style="text-align:center;">The GitHub‑powered bot studio.<br>Create, edit, and host bots instantly.</p>
+                    <p style="font-size:0.8rem; color:#7f8c8d; text-align:center;">© 2026 PackBot</p>
+                    <div class="button-group" style="justify-content:center;">
+                        <button id="close-about">Close</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                document.getElementById('close-about').addEventListener('click', () => modal.remove());
+                modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+            }
+
+            // ---------- Event Listeners ----------
+            document.addEventListener('contextmenu', showContextMenu);
+            document.addEventListener('click', () => menuEl.style.display = 'none');
+            window.addEventListener('scroll', () => menuEl.style.display = 'none');
+            window.addEventListener('resize', () => menuEl.style.display = 'none');
+
+            // Override generate button to use our enhanced generator
+            if (generateBtn) {
+                const originalClick = generateBtn.onclick;
+                generateBtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    const description = simpleDescription.value;
+                    const botName = simpleBotNameInput.value.trim();
+                    if (!description || !botName) {
+                        alert('Please enter a description and a bot name');
+                        return;
+                    }
+                    const safeBotName = botName.replace(/[^a-zA-Z0-9_-]/g, '');
+                    if (!safeBotName) {
+                        alert('Bot name must contain only letters, numbers, hyphens, underscores');
+                        return;
+                    }
+
+                    const files = window.generateBotFromDescription(description, safeBotName);
+                    try {
+                        await window.pushBot(files, safeBotName);
+                        document.getElementById('simple-output').innerHTML = `<p style="color:green">✅ Bot "${safeBotName}" created with your settings!</p>`;
+                        window.loadBotList?.();
+                        window.previewBot?.(safeBotName);
+                    } catch (err) {
+                        document.getElementById('simple-output').innerHTML = `<p style="color:red">❌ Error: ${err.message}</p>`;
+                    }
+                });
+            }
         })();
     </script>
 </body>
