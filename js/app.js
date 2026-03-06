@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const iframe = document.getElementById('preview-frame');
         if (iframe) {
             // Replace with your actual GitHub username and repo name
-            const owner = 'your-github-username'; // <-- CHANGE THIS
+            const owner = 'sussybocca'; // <-- CHANGE THIS
             const repo = 'packbot-user-bots';      // <-- CHANGE THIS IF DIFFERENT
             const branch = 'main';
             const baseUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/USER_CREATED_BOTS/${botName}`;
