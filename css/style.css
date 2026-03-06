@@ -1,0 +1,136 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+}
+header {
+    background: #222;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+}
+header a {
+    color: white;
+    text-decoration: none;
+}
+main {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+.button {
+    display: inline-block;
+    background: #0070f3;
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border-radius: 5px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+}
+.button.secondary {
+    background: #6c757d;
+}
+.button:hover {
+    opacity: 0.9;
+}
+.cta {
+    text-align: center;
+    margin: 2rem 0;
+}
+.steps {
+    display: flex;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+.step {
+    flex: 1;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.bot-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.bot-card {
+    background: white;
+    padding: 1rem;
+    border-radius: 5px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+}
+.mode-switcher {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+.mode-switcher button {
+    padding: 0.5rem 1rem;
+    background: #ddd;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+}
+.mode-switcher button.active {
+    background: #0070f3;
+    color: white;
+}
+.panel {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+.hidden {
+    display: none;
+}
+textarea, input[type="text"] {
+    width: 100%;
+    padding: 0.8rem;
+    margin: 0.5rem 0 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: monospace;
+}
+.file-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.file-tab {
+    background: #e9ecef;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.file-tab.active {
+    background: #0070f3;
+    color: white;
+}
+#file-editor {
+    min-height: 300px;
+    font-family: monospace;
+}
+.code-controls {
+    margin-top: 1rem;
+}
+#preview-frame {
+    width: 100%;
+    height: 400px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background: white;
+}
