@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PackBot – Custom Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background: #0b0f1c;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .custom-window-bar {
+            background: #1e1f2b;
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border-bottom: 2px solid #4f46e5;
+            flex-shrink: 0;
+        }
+        .custom-window-bar button {
+            background: #2d2f3a;
+            border: none;
+            color: white;
+            padding: 0.4rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .custom-window-bar button:hover {
+            background: #4f46e5;
+            transform: scale(1.02);
+        }
+        .custom-window-bar span {
+            color: #a5b4fc;
+            font-size: 0.9rem;
+            margin-left: auto;
+        }
+        iframe {
+            flex: 1;
+            width: 100%;
+            border: none;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="custom-window-bar">
+        <button onclick="window.close()">✖ Close</button>
+        <button onclick="location.reload()">⟲ Refresh</button>
+        <button onclick="window.open(location.href, '_blank')">⧉ New Tab</button>
+        <span id="file-info"></span>
+    </div>
+    <iframe id="viewer-frame" sandbox="allow-scripts allow-same-origin"></iframe>
+
+    <script>
+        (function() {
+            const params = new URLSearchParams(location.search);
+            const encrypted = params.get('file');
+            if (!encrypted) {
+                document.body.innerHTML = '<div style="padding:2rem">No file specified.</div>';
+                return;
+            }
+
+            // Decrypt using same method (needs the SALT – we can embed it or use global from opener)
+            // Since the opener has window.encryptPath/decryptPath, we can access if opened via window.opener.
+            // But if opened directly, we need the decryption logic.
+            const SALT = 'packbot_salt_2026';
+            function decryptPath(encoded) {
+                try {
+                    const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+                    const salted = atob(base64);
+                    if (!salted.startsWith(SALT)) throw new Error('Invalid salt');
+                    return salted.slice(SALT.length).split('|');
+                } catch {
+                    return null;
+                }
+            }
+
+            const parts = decryptPath(encrypted);
+            if (!parts) {
+                document.getElementById('file-info').textContent = 'Invalid file';
+                return;
+            }
+            const [botName, filePath] = parts;
+            document.getElementById('file-info').textContent = `${botName}/${filePath}`;
+
+            // Load via BotLocal proxy
+            const iframe = document.getElementById('viewer-frame');
+            iframe.src = `/BotLocal/${encrypted}`;
+        })();
+    </script>
+</body>
+</html>
