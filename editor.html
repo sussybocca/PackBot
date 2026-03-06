@@ -179,7 +179,7 @@
     <script src="/js/bot-generator.js"></script>
     <script src="/js/app.js"></script>
 
-    <!-- Embedded: everything fully implemented, no placeholders -->
+    <!-- Embedded: everything fully implemented, no placeholders – FIXED CLIPBOARD -->
     <script>
         (function() {
             // ---------- Helper: encrypt/decrypt ----------
@@ -349,6 +349,50 @@
 
             function createSeparator() {
                 return document.createElement('hr');
+            }
+
+            // ---------- Clipboard Helpers (Modern) ----------
+            async function cutText() {
+                const start = fileEditor.selectionStart;
+                const end = fileEditor.selectionEnd;
+                const selectedText = fileEditor.value.substring(start, end);
+                if (!selectedText) return;
+                try {
+                    await navigator.clipboard.writeText(selectedText);
+                    // Delete the selected text
+                    fileEditor.setRangeText('', start, end, 'end');
+                    // Trigger input event to update currentFiles
+                    fileEditor.dispatchEvent(new Event('input', { bubbles: true }));
+                } catch (err) {
+                    console.error('Clipboard write failed:', err);
+                    alert('Failed to cut: ' + err.message);
+                }
+            }
+
+            async function copyText() {
+                const start = fileEditor.selectionStart;
+                const end = fileEditor.selectionEnd;
+                const selectedText = fileEditor.value.substring(start, end);
+                if (!selectedText) return;
+                try {
+                    await navigator.clipboard.writeText(selectedText);
+                } catch (err) {
+                    console.error('Clipboard write failed:', err);
+                    alert('Failed to copy: ' + err.message);
+                }
+            }
+
+            async function pasteText() {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    const start = fileEditor.selectionStart;
+                    const end = fileEditor.selectionEnd;
+                    fileEditor.setRangeText(text, start, end, 'end');
+                    fileEditor.dispatchEvent(new Event('input', { bubbles: true }));
+                } catch (err) {
+                    console.error('Clipboard read failed:', err);
+                    alert('Failed to paste: ' + err.message + ' (ensure clipboard permissions)');
+                }
             }
 
             // ---------- Real Implementations for Features ----------
@@ -694,10 +738,10 @@
 
                 } else if (isEditor) {
                     menuEl.appendChild(createMenuHeader('EDITOR'));
-                    menuEl.appendChild(createMenuItem('✂️ Cut', () => document.execCommand('cut'), 'Ctrl+X'));
-                    menuEl.appendChild(createMenuItem('📋 Copy', () => document.execCommand('copy'), 'Ctrl+C'));
-                    menuEl.appendChild(createMenuItem('📋 Paste', () => document.execCommand('paste'), 'Ctrl+V'));
-                    menuEl.appendChild(createMenuItem('🗑️ Clear', () => { if(confirm('Clear?')) fileEditor.value = ''; }));
+                    menuEl.appendChild(createMenuItem('✂️ Cut', cutText, 'Ctrl+X'));
+                    menuEl.appendChild(createMenuItem('📋 Copy', copyText, 'Ctrl+C'));
+                    menuEl.appendChild(createMenuItem('📋 Paste', pasteText, 'Ctrl+V'));
+                    menuEl.appendChild(createMenuItem('🗑️ Clear', () => { if(confirm('Clear?')) { fileEditor.value = ''; fileEditor.dispatchEvent(new Event('input')); } }));
                     menuEl.appendChild(createMenuItem('🔍 Find/Replace...', showFindReplaceModal, 'Ctrl+F'));
                     menuEl.appendChild(createMenuItem('📏 Toggle word wrap', () => {
                         fileEditor.style.whiteSpace = fileEditor.style.whiteSpace === 'pre-wrap' ? 'pre' : 'pre-wrap';
@@ -859,6 +903,13 @@
             document.addEventListener('click', () => menuEl.style.display = 'none');
             window.addEventListener('scroll', () => menuEl.style.display = 'none');
             window.addEventListener('resize', () => menuEl.style.display = 'none');
+
+            // Sync editor changes to currentFiles
+            fileEditor.addEventListener('input', () => {
+                if (window.currentFile && window.currentFiles) {
+                    window.currentFiles[window.currentFile] = fileEditor.value;
+                }
+            });
 
             // Override generate button
             if (generateBtn) {
