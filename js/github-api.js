@@ -14,20 +14,21 @@ async function apiCall(endpoint, method, body) {
     return res.json();
 }
 
-export async function pushBot(files, botName, subdir = '') {
+// Attach functions to the global window object
+window.pushBot = async function(files, botName, subdir = '') {
     // files = { 'path/file': 'content', ... }
     // subdir will be appended to USER_CREATED_BOTS/
     return apiCall('push-to-github', 'POST', { files, subdir: botName });
-}
+};
 
-export async function getBot(botName) {
+window.getBot = async function(botName) {
     return apiCall('get-bot', 'POST', { botName });
-}
+};
 
-export async function listBots() {
+window.listBots = async function() {
     return apiCall('list-bots', 'GET');
-}
+};
 
-export async function deleteBot(botName) {
+window.deleteBot = async function(botName) {
     return apiCall('delete-bot', 'POST', { botName });
-}
+};
