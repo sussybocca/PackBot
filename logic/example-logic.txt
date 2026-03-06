@@ -1,0 +1,11 @@
+# Example bot logic for a simple customer support bot
+# Lines starting with # are comments
+# Format: pattern : response
+# Use * as wildcard
+
+hello : Hello! Welcome to PackBot support. How can I help you today?
+help : I can help with questions about creating bots, pricing, or technical issues.
+pricing : PackBot is free to use! Bots are stored on your own GitHub repo.
+technical issue : Please describe the issue in detail and I'll try to assist.
+bye : Goodbye! Feel free to come back anytime.
+* : I'm not sure I understand. Could you rephrase?
