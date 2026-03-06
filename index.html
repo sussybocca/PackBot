@@ -5,6 +5,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PackBot – The GitHub‑Powered Bot Studio</title>
     <link rel="stylesheet" href="/css/style.css">
+    <!-- Embedded custom cursor and context menu styles -->
+    <style>
+        /* ----- Custom Cursor (non‑emoji, robot‑inspired) ----- */
+        body {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="%234f46e5" stroke="white" stroke-width="2"/><rect x="7" y="7" width="4" height="4" fill="white" rx="1"/><rect x="13" y="7" width="4" height="4" fill="white" rx="1"/><circle cx="12" cy="16" r="2" fill="white"/></svg>') 12 12, auto;
+        }
+
+        /* ----- Context Menu (same style as editor) ----- */
+        #context-menu {
+            position: absolute;
+            background: rgba(30, 35, 60, 0.98);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            padding: 0.6rem 0;
+            min-width: 260px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: none;
+            font-family: 'Inter', system-ui, sans-serif;
+            color: #eef2ff;
+        }
+        #context-menu .menu-header {
+            padding: 0.5rem 1.2rem 0.3rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #a5b4fc;
+            font-weight: 600;
+        }
+        #context-menu .menu-item {
+            padding: 0.6rem 1.5rem;
+            cursor: pointer;
+            transition: background 0.15s;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        #context-menu .menu-item:hover {
+            background: rgba(79, 70, 229, 0.5);
+        }
+        #context-menu .menu-item.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        #context-menu .menu-item .shortcut {
+            margin-left: auto;
+            color: #7f8c8d;
+            font-size: 0.8rem;
+        }
+        #context-menu hr {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin: 0.3rem 0;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -38,7 +95,147 @@
             <div id="bot-list" class="bot-grid">Loading...</div>
         </section>
     </main>
+
+    <!-- Context Menu Container -->
+    <div id="context-menu"></div>
+
+    <!-- Scripts -->
     <script src="/js/github-api.js"></script>
     <script src="/js/app.js"></script>
+    <!-- Embedded script for context menu and cursor -->
+    <script>
+        (function() {
+            // ---------- Context Menu ----------
+            const menuEl = document.getElementById('context-menu');
+            const botListContainer = document.getElementById('bot-list');
+
+            function createMenuItem(label, onClick, shortcut = '', icon = '', disabled = false) {
+                const item = document.createElement('div');
+                item.className = 'menu-item' + (disabled ? ' disabled' : '');
+                item.innerHTML = icon ? `<span>${icon}</span>${label}` : label;
+                if (shortcut) {
+                    const shortSpan = document.createElement('span');
+                    shortSpan.className = 'shortcut';
+                    shortSpan.textContent = shortcut;
+                    item.appendChild(shortSpan);
+                }
+                if (!disabled) {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        onClick();
+                        menuEl.style.display = 'none';
+                    });
+                }
+                return item;
+            }
+
+            function createMenuHeader(text) {
+                const header = document.createElement('div');
+                header.className = 'menu-header';
+                header.textContent = text;
+                return header;
+            }
+
+            function createSeparator() {
+                return document.createElement('hr');
+            }
+
+            // ---------- Context Menu Actions ----------
+            function refreshBotList() {
+                if (typeof window.loadBotList === 'function') {
+                    window.loadBotList();
+                } else {
+                    location.reload(); // fallback
+                }
+            }
+
+            function openEditor() {
+                window.location.href = '/editor.html';
+            }
+
+            function showAbout() {
+                alert('PackBot – The GitHub‑powered bot studio.\nVersion 2.0.0');
+            }
+
+            async function showStats() {
+                try {
+                    const data = await window.listBots();
+                    let totalFiles = 0;
+                    for (let bot of data.bots) {
+                        const botData = await window.getBot(bot);
+                        totalFiles += Object.keys(botData.files || {}).length;
+                    }
+                    alert(`Total bots: ${data.bots.length}\nTotal files: ${totalFiles}`);
+                } catch (err) {
+                    alert('Error fetching stats: ' + err.message);
+                }
+            }
+
+            async function clearAllBots() {
+                if (!confirm('⚠️ Delete ALL bots? This CANNOT be undone.')) return;
+                try {
+                    const data = await window.listBots();
+                    for (let bot of data.bots) {
+                        await window.deleteBot(bot);
+                    }
+                    alert('All bots deleted.');
+                    refreshBotList();
+                } catch (err) {
+                    alert('Error: ' + err.message);
+                }
+            }
+
+            function toggleTheme() {
+                // Simple theme toggle – you can expand this
+                const current = localStorage.getItem('packbot_theme') || 'dark';
+                const next = current === 'dark' ? 'light' : 'dark';
+                localStorage.setItem('packbot_theme', next);
+                document.body.classList.remove('theme-dark', 'theme-light');
+                document.body.classList.add(`theme-${next}`);
+            }
+
+            // ---------- Show Context Menu ----------
+            document.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+
+                // Clear previous menu
+                menuEl.innerHTML = '';
+
+                // Build menu sections
+                menuEl.appendChild(createMenuHeader('PACKBOT'));
+                menuEl.appendChild(createMenuItem('📄 Open Editor', openEditor, 'Ctrl+E'));
+                menuEl.appendChild(createMenuItem('🔄 Refresh Bot List', refreshBotList, 'F5'));
+                menuEl.appendChild(createMenuItem('📊 Bot Stats', showStats));
+                menuEl.appendChild(createMenuItem('🧹 Clear All Bots', clearAllBots));
+                menuEl.appendChild(createSeparator());
+
+                menuEl.appendChild(createMenuHeader('APPEARANCE'));
+                menuEl.appendChild(createMenuItem('🎨 Toggle Theme', toggleTheme));
+                // You could add more theme options here
+
+                menuEl.appendChild(createSeparator());
+                menuEl.appendChild(createMenuHeader('HELP'));
+                menuEl.appendChild(createMenuItem('❓ About', showAbout));
+                menuEl.appendChild(createMenuItem('⌨️ Shortcuts', () => {
+                    alert('Shortcuts:\nCtrl+E – Open Editor\nF5 – Refresh List');
+                }));
+
+                // Position menu
+                menuEl.style.left = e.pageX + 'px';
+                menuEl.style.top = e.pageY + 'px';
+                menuEl.style.display = 'block';
+            });
+
+            // Hide menu on click elsewhere
+            document.addEventListener('click', () => {
+                menuEl.style.display = 'none';
+            });
+            window.addEventListener('scroll', () => menuEl.style.display = 'none');
+            window.addEventListener('resize', () => menuEl.style.display = 'none');
+
+            // ---------- Custom Cursor (already in CSS) – no extra JS needed ----------
+            // The cursor is defined in the <style> block above; it's a robot‑face SVG.
+        })();
+    </script>
 </body>
 </html>
