@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PackBot – The GitHub‑Powered Bot Studio</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <h1>🤖 PackBot</h1>
+        <p>Create custom bots using text or code – stored on your own GitHub repo.</p>
+    </header>
+    <main>
+        <section class="cta">
+            <a href="/editor.html" class="button">Start Building</a>
+            <a href="#how-it-works" class="button secondary">How it works</a>
+        </section>
+        <section id="how-it-works">
+            <h2>How PackBot Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <h3>1. Describe or Code</h3>
+                    <p>In simple mode, write what you want your bot to do. In code mode, edit files directly.</p>
+                </div>
+                <div class="step">
+                    <h3>2. We Generate & Push</h3>
+                    <p>Your bot becomes a folder in a separate GitHub repo. Every file is committed instantly.</p>
+                </div>
+                <div class="step">
+                    <h3>3. Run & Share</h3>
+                    <p>Preview your bot live, share the URL, or fork it to make a new version.</p>
+                </div>
+            </div>
+        </section>
+        <section id="my-bots">
+            <h2>Your Bots</h2>
+            <div id="bot-list" class="bot-grid">Loading...</div>
+        </section>
+    </main>
+    <script src="/js/github-api.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
