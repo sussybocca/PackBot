@@ -1,7 +1,8 @@
-// This file assumes the functions from github-api.js and bot-generator.js are globally available (attached to window).
+// app.js – PackBot frontend logic
+// Uses global functions from github-api.js and bot-generator.js
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Mode switching
+    // ========== MODE SWITCHING ==========
     const simpleBtn = document.getElementById('simple-mode-btn');
     const codeBtn = document.getElementById('code-mode-btn');
     const simplePanel = document.getElementById('simple-panel');
@@ -22,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Simple mode generate
+    // ========== SIMPLE MODE – GENERATE BOT ==========
     const generateBtn = document.getElementById('generate-bot');
     if (generateBtn) {
         generateBtn.addEventListener('click', async () => {
@@ -44,17 +45,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await window.pushBot(files, safeBotName);
                 document.getElementById('simple-output').innerHTML = `<p style="color:green">✅ Bot "${safeBotName}" created successfully!</p>`;
                 loadBotList(); // refresh bot list
-                // Optionally preview
-                previewBot(safeBotName);
+                previewBot(safeBotName); // show preview
             } catch (err) {
                 document.getElementById('simple-output').innerHTML = `<p style="color:red">❌ Error: ${err.message}</p>`;
             }
         });
     }
 
-    // Code mode – file tabs and editor
+    // ========== CODE MODE – FILE TABS AND EDITOR ==========
     const fileTabs = document.querySelectorAll('.file-tab');
     const fileEditor = document.getElementById('file-editor');
+    // In-memory store for current files being edited
     const currentFiles = {
         'logic.txt': '# This is your bot logic\n# Format: pattern : response\nhello : Hello from code mode!',
         'index.html': '<!DOCTYPE html>\n<html>\n<head><title>Code Bot</title></head>\n<body>Hello</body>\n</html>',
@@ -78,17 +79,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initialize editor with first file
         fileEditor.value = currentFiles['logic.txt'];
 
-        // Save on input? For now just keep in memory.
+        // Save on input
         fileEditor.addEventListener('input', () => {
             currentFiles[currentFile] = fileEditor.value;
         });
 
-        // Add file button
+        // Add new file button
         document.getElementById('add-file-btn')?.addEventListener('click', () => {
             const fileName = prompt('Enter new file name (e.g., data.json):');
             if (fileName && !currentFiles[fileName]) {
                 currentFiles[fileName] = '';
-                // add tab
+                // Create new tab
                 const tab = document.createElement('button');
                 tab.className = 'file-tab';
                 tab.dataset.file = fileName;
@@ -100,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     fileEditor.value = currentFiles[fileName];
                 });
                 document.querySelector('.file-tabs').appendChild(tab);
-                // switch to it
+                // Switch to the new tab
                 fileTabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 currentFile = fileName;
@@ -111,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Push code mode bot
+    // ========== PUSH CODE MODE BOT ==========
     document.getElementById('push-code-bot')?.addEventListener('click', async () => {
         const botName = document.getElementById('code-bot-name').value.trim();
         if (!botName) {
@@ -133,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Load bot list
+    // ========== LOAD BOT LIST ==========
     async function loadBotList() {
         const container = document.getElementById('bot-list');
         if (!container) return;
@@ -146,10 +147,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             let html = '';
             bots.forEach(bot => {
+                // Use template literals and escape bot name to prevent injection
+                const safeBot = bot.replace(/[^a-zA-Z0-9_-]/g, '');
                 html += `<div class="bot-card">
                     <h3>${bot}</h3>
-                    <button class="button small" onclick="previewBot('${bot}')">Preview</button>
-                    <button class="button small secondary" onclick="deleteBot('${bot}')">Delete</button>
+                    <button class="button small" onclick="previewBot('${safeBot}')">Preview</button>
+                    <button class="button small secondary" onclick="deleteBot('${safeBot}')">Delete</button>
                 </div>`;
             });
             container.innerHTML = html;
@@ -158,20 +161,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Preview bot
+    // ========== PREVIEW BOT ==========
     window.previewBot = function(botName) {
         const iframe = document.getElementById('preview-frame');
         if (iframe) {
-            // Replace with your actual GitHub username and repo name
-            const owner = 'sussybocca'; // <-- CHANGE THIS
-            const repo = 'packbot-user-bots';      // <-- CHANGE THIS IF DIFFERENT
-            const branch = 'main';
-            const baseUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/USER_CREATED_BOTS/${botName}`;
-            iframe.src = `${baseUrl}/index.html`;
+            // Use the proxy endpoint (requires netlify.toml redirect and bot-proxy function)
+            iframe.src = `/bot-preview/${botName}/index.html`;
         }
     };
 
-    // Delete bot (optional)
+    // ========== DELETE BOT ==========
     window.deleteBot = async function(botName) {
         if (!confirm(`Delete bot "${botName}"?`)) return;
         try {
@@ -182,6 +181,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Initial load of bot list
+    // ========== INITIAL LOAD ==========
     loadBotList();
 });
