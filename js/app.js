@@ -1,9 +1,4 @@
-// Import our modules (using ES modules, but we need to include them as scripts in HTML)
-// Since we're using script tags without type="module", we need to attach to window.
-// Alternatively, we can bundle, but for simplicity we'll attach to window.
-
-// This file assumes the functions from github-api.js and bot-generator.js are loaded.
-// We'll set up event listeners when DOM is ready.
+// This file assumes the functions from github-api.js and bot-generator.js are globally available (attached to window).
 
 document.addEventListener('DOMContentLoaded', () => {
     // Mode switching
@@ -44,9 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const files = generateBotFromDescription(description, safeBotName);
+            const files = window.generateBotFromDescription(description, safeBotName);
             try {
-                const result = await pushBot(files, safeBotName);
+                const result = await window.pushBot(files, safeBotName);
                 document.getElementById('simple-output').innerHTML = `<p style="color:green">✅ Bot "${safeBotName}" created successfully!</p>`;
                 loadBotList(); // refresh bot list
                 // Optionally preview
@@ -129,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         try {
-            await pushBot(currentFiles, safeBotName);
+            await window.pushBot(currentFiles, safeBotName);
             alert(`Bot "${safeBotName}" pushed!`);
             loadBotList();
             previewBot(safeBotName);
@@ -143,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('bot-list');
         if (!container) return;
         try {
-            const data = await listBots();
+            const data = await window.listBots();
             const bots = data.bots || [];
             if (bots.length === 0) {
                 container.innerHTML = '<p>No bots yet. Create one!</p>';
@@ -167,13 +162,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.previewBot = function(botName) {
         const iframe = document.getElementById('preview-frame');
         if (iframe) {
-            // Assuming repo is public, construct raw URL
-            const owner = 'sussybocca'; // should be dynamic? We'll get from env? For now placeholder.
-            const repo = 'packbot-user-bots';
+            // Replace with your actual GitHub username and repo name
+            const owner = 'your-github-username'; // <-- CHANGE THIS
+            const repo = 'packbot-user-bots';      // <-- CHANGE THIS IF DIFFERENT
             const branch = 'main';
             const baseUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/USER_CREATED_BOTS/${botName}`;
-            // index.html might reference relative paths like script.js, style.css – they will resolve to same folder on raw? Not exactly, because raw serves files with correct MIME but relative links won't work. Better to load a simple proxy or serve via a special preview function.
-            // For simplicity, we'll load index.html directly, but scripts/styles won't load due to CORS/same-origin? Actually raw.githubusercontent.com serves with correct MIME, and if we load index.html inside iframe, its relative requests will go to the same raw base path. That should work as long as we set the iframe src to the raw HTML.
             iframe.src = `${baseUrl}/index.html`;
         }
     };
@@ -182,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.deleteBot = async function(botName) {
         if (!confirm(`Delete bot "${botName}"?`)) return;
         try {
-            await deleteBot(botName);
+            await window.deleteBot(botName);
             loadBotList();
         } catch (err) {
             alert(`Delete failed: ${err.message}`);
