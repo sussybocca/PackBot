@@ -1,6 +1,5 @@
 const { Octokit } = require('@octokit/rest');
 
-// Map file extensions to MIME types
 const mimeTypes = {
   '.html': 'text/html',
   '.htm': 'text/html',
@@ -17,31 +16,48 @@ const mimeTypes = {
 };
 
 exports.handler = async (event) => {
-  // The path after "/bot-proxy/" is in event.path, but we need to extract the relevant part.
-  // Netlify Functions receive the whole path as event.path, e.g., "/.netlify/functions/bot-proxy/my-bot/index.html"
-  // We'll split and take everything after "/bot-proxy/".
-  const pathParts = event.path.split('/bot-proxy/');
-  if (pathParts.length < 2) {
-    return { statusCode: 400, body: 'Invalid path' };
-  }
-  const fullPath = pathParts[1]; // e.g., "my-bot/index.html"
+  // Log the full path for debugging (visible in Netlify function logs)
+  console.log('Full event.path:', event.path);
 
-  // Split into bot name and file path
+  // Expected internal path: /.netlify/functions/bot-proxy/botName/file.html
+  // Split on '/bot-proxy/'
+  const pathParts = event.path.split('/bot-proxy/');
+  console.log('pathParts:', pathParts);
+
+  if (pathParts.length < 2) {
+    return {
+      statusCode: 400,
+      body: `Invalid path: expected '/bot-proxy/' in URL, got ${event.path}`,
+    };
+  }
+
+  const fullPath = pathParts[1]; // e.g., "adddd/index.html"
+  console.log('fullPath:', fullPath);
+
   const slashIndex = fullPath.indexOf('/');
   if (slashIndex === -1) {
-    return { statusCode: 400, body: 'Missing file path' };
+    return {
+      statusCode: 400,
+      body: `Missing file path in: ${fullPath}`,
+    };
   }
+
   const botName = fullPath.substring(0, slashIndex);
-  const filePath = fullPath.substring(slashIndex + 1); // e.g., "index.html"
+  const filePath = fullPath.substring(slashIndex + 1);
 
   if (!botName || !filePath) {
-    return { statusCode: 400, body: 'Invalid bot name or file path' };
+    return {
+      statusCode: 400,
+      body: `Invalid bot name or file path: botName="${botName}", filePath="${filePath}"`,
+    };
   }
+
+  console.log(`Bot: ${botName}, File: ${filePath}`);
 
   const token = process.env.GITHUB_TOKEN;
   const owner = process.env.GITHUB_OWNER;
   const repo = process.env.GITHUB_REPO;
-  const branch = 'main'; // or use default branch detection if needed
+  const branch = 'main'; // Change to 'master' if needed
 
   if (!token || !owner || !repo) {
     return { statusCode: 500, body: 'Missing GitHub configuration' };
@@ -50,8 +66,8 @@ exports.handler = async (event) => {
   const octokit = new Octokit({ auth: token });
 
   try {
-    // Construct the path in the GitHub repo
     const githubPath = `USER_CREATED_BOTS/${botName}/${filePath}`;
+    console.log('Fetching from GitHub:', githubPath);
 
     const { data } = await octokit.repos.getContent({
       owner,
@@ -61,13 +77,10 @@ exports.handler = async (event) => {
     });
 
     if (!data.content) {
-      return { statusCode: 404, body: 'File not found' };
+      return { statusCode: 404, body: 'File not found on GitHub' };
     }
 
-    // GitHub returns content base64-encoded
     const content = Buffer.from(data.content, 'base64').toString('utf-8');
-
-    // Determine MIME type from file extension
     const ext = filePath.substring(filePath.lastIndexOf('.')).toLowerCase();
     const contentType = mimeTypes[ext] || 'text/plain';
 
@@ -75,9 +88,9 @@ exports.handler = async (event) => {
       statusCode: 200,
       headers: {
         'Content-Type': contentType,
-        'Access-Control-Allow-Origin': '*', // Allow your frontend to fetch if needed
-        // Explicitly remove X-Frame-Options
-        'X-Frame-Options': 'ALLOWALL', // Not standard, but we'll just omit it – Netlify may add its own? We'll override.
+        'Access-Control-Allow-Origin': '*',
+        // Allow embedding in iframe
+        'X-Frame-Options': 'ALLOWALL',
       },
       body: content,
     };
@@ -86,6 +99,6 @@ exports.handler = async (event) => {
     if (error.status === 404) {
       return { statusCode: 404, body: 'File not found in GitHub' };
     }
-    return { statusCode: 500, body: 'Internal server error' };
+    return { statusCode: 500, body: `Internal error: ${error.message}` };
   }
 };
