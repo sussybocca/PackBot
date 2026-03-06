@@ -2,53 +2,45 @@ const { Octokit } = require('@octokit/rest');
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
+    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   const { files, subdir = '' } = JSON.parse(event.body);
-  // files = { 'path/to/file.simple': 'content', ... }
-  // subdir = bot name (will be appended to USER_CREATED_BOTS/)
-
   const token = process.env.GITHUB_TOKEN;
   const owner = process.env.GITHUB_OWNER;
   const repo = process.env.GITHUB_REPO;
-  const branch = 'main';
 
   if (!token || !owner || !repo) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Missing GitHub configuration' }),
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: 'Missing GitHub configuration' }) };
   }
 
   const octokit = new Octokit({ auth: token });
 
   try {
-    // 1. Get branch reference
+    // 1. Get the repository's default branch
+    const { data: repoData } = await octokit.repos.get({ owner, repo });
+    const defaultBranch = repoData.default_branch;
+
+    // 2. Get the latest commit SHA for the branch
     const { data: refData } = await octokit.git.getRef({
       owner,
       repo,
-      ref: `heads/${branch}`,
+      ref: `heads/${defaultBranch}`,
     });
     const latestCommitSha = refData.object.sha;
 
-    // 2. Get current commit tree
+    // 3. Get the FULL commit data to extract the tree SHA
     const { data: commitData } = await octokit.git.getCommit({
       owner,
       repo,
       commit_sha: latestCommitSha,
     });
-    const baseTreeSha = commitData.tree.sha;
+    const baseTreeSha = commitData.tree.sha; // This MUST be valid
 
-    // 3. Create blobs and build tree
-    const basePath = subdir
-      ? `USER_CREATED_BOTS/${subdir}/`
-      : 'USER_CREATED_BOTS/';
+    // 4. Create blobs for each new file
+    const basePath = subdir ? `USER_CREATED_BOTS/${subdir}/` : 'USER_CREATED_BOTS/';
 
-    const tree = await Promise.all(
+    const treeEntries = await Promise.all(
       Object.entries(files).map(async ([filePath, content]) => {
         const { data: blob } = await octokit.git.createBlob({
           owner,
@@ -65,15 +57,15 @@ exports.handler = async (event) => {
       })
     );
 
-    // 4. Create new tree
+    // 5. Create a new tree with the valid base_tree
     const { data: newTree } = await octokit.git.createTree({
       owner,
       repo,
-      base_tree: baseTreeSha,
-      tree,
+      base_tree: baseTreeSha, // Now guaranteed to be fresh
+      tree: treeEntries,
     });
 
-    // 5. Create commit
+    // 6. Create a commit pointing to the new tree
     const { data: newCommit } = await octokit.git.createCommit({
       owner,
       repo,
@@ -82,11 +74,11 @@ exports.handler = async (event) => {
       parents: [latestCommitSha],
     });
 
-    // 6. Update branch
+    // 7. Update the branch
     await octokit.git.updateRef({
       owner,
       repo,
-      ref: `heads/${branch}`,
+      ref: `heads/${defaultBranch}`,
       sha: newCommit.sha,
       force: false,
     });
@@ -98,6 +90,18 @@ exports.handler = async (event) => {
     };
   } catch (error) {
     console.error('GitHub API error:', error);
+    
+    // Add more specific error handling
+    if (error.status === 422) {
+      return {
+        statusCode: 422,
+        body: JSON.stringify({ 
+          error: 'Git tree creation failed. The base tree SHA might be invalid. Please try again.',
+          details: error.message 
+        }),
+      };
+    }
+    
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message }),
