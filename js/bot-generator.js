@@ -1,5 +1,5 @@
 // Very basic template-based generator – extend as needed
-export function generateBotFromDescription(description, botName) {
+window.generateBotFromDescription = function(description, botName) {
     // Extract keywords to influence the bot's personality
     const lowerDesc = description.toLowerCase();
     const isJokeBot = /joke|funny|laugh/i.test(lowerDesc);
@@ -199,4 +199,4 @@ header h1 {
         'script.js': scriptJs,
         'style.css': styleCss
     };
-}
+};
