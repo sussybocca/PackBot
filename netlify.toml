@@ -3,3 +3,9 @@
   to = "/.netlify/functions/bot-proxy/:splat"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/BotLocal/*"
+  to = "/.netlify/functions/BotLocal/:splat"
+  status = 200
+  force = true
