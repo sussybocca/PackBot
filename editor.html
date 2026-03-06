@@ -5,6 +5,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PackBot – Editor</title>
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        /* Custom Context Menu */
+        #context-menu {
+            position: absolute;
+            background: rgba(30, 35, 60, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 0.5rem 0;
+            min-width: 180px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+            font-family: 'Inter', sans-serif;
+        }
+        #context-menu ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        #context-menu li {
+            padding: 0.7rem 1.5rem;
+            color: #eef2ff;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        #context-menu li:hover {
+            background: rgba(79, 70, 229, 0.4);
+        }
+        #context-menu li.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        #context-menu hr {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin: 0.3rem 0;
+        }
+        /* Custom window top bar (will be used in viewer.html) */
+        .custom-window-bar {
+            background: #1e1f2b;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border-bottom: 1px solid #333;
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-window-bar button {
+            background: #2d2f3a;
+            border: none;
+            color: white;
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .custom-window-bar button:hover {
+            background: #4f46e5;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -29,7 +95,7 @@
         <!-- Code Mode Panel (hidden by default) -->
         <div id="code-panel" class="panel hidden">
             <h2>Code your bot</h2>
-            <div class="file-tabs">
+            <div class="file-tabs" id="file-tabs-container">
                 <button class="file-tab active" data-file="logic.txt">logic.txt</button>
                 <button class="file-tab" data-file="index.html">index.html</button>
                 <button class="file-tab" data-file="script.js">script.js</button>
@@ -47,11 +113,123 @@
         <!-- Preview area -->
         <section id="preview">
             <h2>Preview</h2>
-            <iframe id="preview-frame" src="about:blank" sandbox="allow-scripts allow-same-origin"></iframe>
+            <iframe id="preview-frame" src="about:blank" sandbox="allow-scripts"></iframe>
         </section>
     </main>
+
+    <!-- Custom Context Menu -->
+    <div id="context-menu">
+        <ul>
+            <li id="menu-rename">✏️ Rename</li>
+            <li id="menu-newtab">📂 Open in new tab</li>
+            <li id="menu-custom">🖥️ Open in custom window</li>
+        </ul>
+    </div>
+
+    <!-- Original scripts -->
     <script src="/js/github-api.js"></script>
     <script src="/js/bot-generator.js"></script>
     <script src="/js/app.js"></script>
+
+    <!-- Embedded feature: custom context menu & encrypted URLs -->
+    <script>
+        (function() {
+            // ---------- Helper: encrypt/decrypt (simple base64 with salt) ----------
+            const SALT = 'packbot_salt_2026'; // can be any string
+            function encryptPath(botName, filePath) {
+                const data = `${botName}|${filePath}`;
+                // Simple obfuscation: base64 after adding salt (not secure, just looks random)
+                const salted = SALT + data;
+                return btoa(salted).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+            }
+            function decryptPath(encoded) {
+                try {
+                    const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+                    const salted = atob(base64);
+                    if (!salted.startsWith(SALT)) throw new Error('Invalid salt');
+                    return salted.slice(SALT.length).split('|');
+                } catch {
+                    return null;
+                }
+            }
+
+            // ---------- Context Menu Logic ----------
+            const menu = document.getElementById('context-menu');
+            const menuRename = document.getElementById('menu-rename');
+            const menuNewtab = document.getElementById('menu-newtab');
+            const menuCustom = document.getElementById('menu-custom');
+
+            let currentTab = null; // The tab element that was right-clicked
+            let currentBotName = ''; // We'll get from input field
+
+            // Hide menu on click elsewhere
+            document.addEventListener('click', () => menu.style.display = 'none');
+            document.addEventListener('contextmenu', (e) => {
+                // Prevent default only if right-click on a file tab (but not add-file button)
+                const tab = e.target.closest('.file-tab');
+                if (!tab || tab.id === 'add-file-btn') return; // let default menu for others
+                e.preventDefault();
+                currentTab = tab;
+                // Get current bot name from input
+                currentBotName = document.getElementById('code-bot-name').value.trim();
+                if (!currentBotName) {
+                    alert('Please enter a bot name first.');
+                    return;
+                }
+                // Position menu
+                menu.style.left = e.pageX + 'px';
+                menu.style.top = e.pageY + 'px';
+                menu.style.display = 'block';
+            });
+
+            // Rename
+            menuRename.addEventListener('click', () => {
+                if (!currentTab) return;
+                const oldName = currentTab.dataset.file;
+                const newName = prompt('Enter new file name (including extension):', oldName);
+                if (!newName || newName === oldName) return;
+                // Update tab
+                currentTab.dataset.file = newName;
+                currentTab.textContent = newName;
+                // Update currentFiles in app.js (need to access global currentFiles)
+                if (window.currentFiles && window.currentFiles.hasOwnProperty(oldName)) {
+                    window.currentFiles[newName] = window.currentFiles[oldName];
+                    delete window.currentFiles[oldName];
+                }
+                // If this was the active tab, update editor content
+                if (currentTab.classList.contains('active')) {
+                    document.getElementById('file-editor').value = window.currentFiles[newName] || '';
+                    window.currentFile = newName;
+                }
+                menu.style.display = 'none';
+            });
+
+            // Open in new tab (encrypted URL)
+            menuNewtab.addEventListener('click', () => {
+                if (!currentTab || !currentBotName) return;
+                const file = currentTab.dataset.file;
+                const encrypted = encryptPath(currentBotName, file);
+                const url = `/BotLocal/${encrypted}`;
+                window.open(url, '_blank');
+                menu.style.display = 'none';
+            });
+
+            // Open in custom window
+            menuCustom.addEventListener('click', () => {
+                if (!currentTab || !currentBotName) return;
+                const file = currentTab.dataset.file;
+                const encrypted = encryptPath(currentBotName, file);
+                // Open a popup with custom viewer
+                const viewerUrl = `/file-viewer.html?file=${encrypted}`;
+                const popup = window.open(viewerUrl, 'customViewer', 'width=900,height=600,scrollbars=yes,resizable=yes');
+                if (popup) popup.focus();
+                menu.style.display = 'none';
+            });
+
+            // Expose encrypt/decrypt globally for viewer page
+            window.encryptPath = encryptPath;
+            window.decryptPath = decryptPath;
+        })();
+    </script>
 </body>
 </html>
