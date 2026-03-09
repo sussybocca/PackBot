@@ -113,7 +113,17 @@ const jokes = [
     "Why did the math book look sad? Because it had too many problems!",
     "I'm reading a book on anti-gravity. It's impossible to put down!",
     "I used to be a baker, but I couldn't make enough dough.",
-    "Why don't skeletons fight each other? They don't have the guts."
+    "Why don't skeletons fight each other? They don't have the guts.",
+    "What do you call a sleeping bull? A bulldozer.",
+    "Why can't you give Elsa a balloon? Because she will let it go!",
+    "What do you call a bear with no teeth? A gummy bear!",
+    "Why did the coffee file a police report? It got mugged.",
+    "What do you call a fish wearing a bowtie? Sofishticated.",
+    "Why don't some couples go to the gym? Because some relationships don't work out.",
+    "I used to play piano by ear, but now I use my hands.",
+    "What do you call a fake noodle? An impasta.",
+    "Why don't scientists trust atoms? Because they make up everything.",
+    "What do you call a fish with no eyes? A fsh."
 ];
 const responses = {
     "joke": jokes[Math.floor(Math.random() * jokes.length)],
@@ -153,7 +163,50 @@ sendBtn.onclick = function() {
 make a gaming bot : Here's a gaming bot template with RPG stats and game recommendations!
 
 GAMING BOT COMPLETE CODE:
-[ Gaming bot HTML, CSS, and JS code here - would include RPG elements, game recommendations, and gaming slang ]
+<!DOCTYPE html>
+<html>
+<head><title>RPG Bot</title><style>
+body{font-family:'Courier New',monospace;background:#1a1a2e;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;}
+.game-container{width:600px;height:700px;background:#16213e;border-radius:20px;overflow:hidden;box-shadow:0 0 20px #0f3460;}
+.header{background:#0f3460;padding:20px;text-align:center;}
+.header h1{margin:0;color:#e94560;}
+.chat-area{height:500px;overflow-y:auto;padding:20px;background:#1a1a2e;}
+.message{margin:10px 0;padding:10px;border-radius:10px;}
+.user{background:#e94560;color:white;text-align:right;}
+.bot{background:#0f3460;color:white;}
+.input-area{display:flex;padding:10px;background:#16213e;}
+input{flex:1;padding:10px;border:none;border-radius:5px;margin-right:10px;background:#0f3460;color:white;}
+button{padding:10px 20px;background:#e94560;border:none;border-radius:5px;color:white;cursor:pointer;}
+</style></head>
+<body>
+<div class="game-container"><div class="header"><h1>🎮 RPG BOT</h1></div><div class="chat-area" id="chat"></div><div class="input-area"><input id="input" placeholder="Create a character..."><button onclick="send()">Send</button></div></div>
+<script>
+let character = null;
+const commands = {
+    "create character": (name) => { character = { name: name || "Hero", level: 1, hp: 100, mp: 50, gold: 0 }; return "Character " + character.name + " created! Type 'stats' to see."; },
+    "stats": () => character ? "Level " + character.level + " | HP: " + character.hp + " | MP: " + character.mp + " | Gold: " + character.gold : "No character yet.",
+    "battle": () => { if(!character) return "Create a character first!"; character.gold += 10; character.hp -= 10; return "You fought a goblin and won 10 gold! (HP -10)"; },
+    "shop": "Potions: 50 gold, Elixirs: 100 gold. (Coming soon!)",
+    "help": "Commands: create character [name], stats, battle, shop"
+};
+function send() {
+    let msg = document.getElementById('input').value.trim();
+    let chat = document.getElementById('chat');
+    chat.innerHTML += '<div class="message user">You: ' + msg + '</div>';
+    let reply = "I don't understand. Try 'help'.";
+    let lower = msg.toLowerCase();
+    if(lower.startsWith('create character')) {
+        let name = msg.substring(16).trim() || "Hero";
+        reply = commands["create character"](name);
+    } else if(lower === 'stats') reply = commands.stats();
+    else if(lower === 'battle') reply = commands.battle();
+    else if(lower === 'shop') reply = commands.shop;
+    else if(lower === 'help') reply = commands.help;
+    chat.innerHTML += '<div class="message bot">Bot: ' + reply + '</div>';
+    document.getElementById('input').value = '';
+    chat.scrollTop = chat.scrollHeight;
+}
+</script></body></html>
 ---
 
 create a tech bot : Tech bot coming right up! Here's a bot that can talk about programming, computers, and tech:
@@ -189,6 +242,43 @@ create custom bot : Tell me the personality you want (friendly, funny, professio
 # ---------- EXAMPLE GENERATIONS ----------
 make me a friendly bot : Here's a friendly bot template with warm, welcoming responses:
 
+FRIENDLY BOT HTML/CSS/JS:
+<!DOCTYPE html>
+<html>
+<head><title>FriendlyBot</title><style>
+body{font-family:Arial,sans-serif;background:#ffb6c1;display:flex;justify-content:center;align-items:center;height:100vh;}
+.chat{width:400px;height:500px;background:white;border-radius:20px;overflow:hidden;box-shadow:0 5px 30px rgba(0,0,0,0.2);}
+.header{background:#ff69b4;color:white;padding:15px;text-align:center;font-size:24px;}
+.messages{height:380px;overflow-y:auto;padding:10px;background:#fff0f5;}
+.message{margin:5px;padding:8px 12px;border-radius:15px;max-width:80%;}
+.user{background:#ff69b4;color:white;float:right;clear:both;}
+.bot{background:#f0f0f0;float:left;clear:both;}
+.input{display:flex;padding:10px;}
+input{flex:1;padding:8px;border:1px solid #ff69b4;border-radius:20px;}
+button{padding:8px 15px;margin-left:5px;background:#ff69b4;color:white;border:none;border-radius:20px;cursor:pointer;}
+</style></head>
+<body>
+<div class="chat"><div class="header">💖 FriendlyBot</div><div class="messages" id="messages"></div><div class="input"><input id="userInput" placeholder="Say something nice..."><button onclick="send()">Send</button></div></div>
+<script>
+const replies = {
+    "hello": "Hi there friend! So good to see you! 💕",
+    "how are you": "I'm doing wonderfully, thanks for asking! How about you, my friend?",
+    "i love you": "Aww, I love you too! You're the best!",
+    "thank you": "You're so welcome! That's what friends are for!",
+    "bye": "Bye bye friend! Come back soon, I'll miss you!"
+};
+function send(){
+    let msg=document.getElementById('userInput').value.toLowerCase();
+    let m=document.getElementById('messages');
+    m.innerHTML+='<div class="message user">You: '+msg+'</div>';
+    let reply="I'm here for you, friend! Tell me more. 😊";
+    for(let k in replies) if(msg.includes(k)) reply=replies[k];
+    setTimeout(()=>m.innerHTML+='<div class="message bot">Bot: '+reply+'</div>',300);
+    document.getElementById('userInput').value='';
+    m.scrollTop=m.scrollHeight;
+}
+</script></body></html>
+
 FRIENDLY BOT LOGIC.TXT:
 hello : Hi there friend! So good to see you! 💕
 how are you : I'm doing wonderfully, thanks for asking! How about you, my friend?
@@ -196,8 +286,6 @@ i love you : Aww, I love you too! You're the best!
 thank you : You're so welcome! That's what friends are for!
 bye : Bye bye friend! Come back soon, I'll miss you!
 * : I'm here for you, friend! Tell me more. 😊
-
-FRIENDLY BOT HTML/CSS/JS: [full code would be here]
 ---
 
 create a professional bot : Here's a professional assistant bot template:
@@ -442,15 +530,64 @@ temperature : Temperature is perfect for chatting with bots! 🌡️
 example: joke bot called Chuckles : Here's Chuckles the Joke Bot:
 
 CHUCKLES COMPLETE CODE:
-[Joke bot HTML/CSS/JS with 50+ jokes]
+<!DOCTYPE html>
+<html>
+<head><title>Chuckles</title><style>
+body{font-family:Arial;background:#ffaa00;display:flex;justify-content:center;align-items:center;height:100vh;}
+.chat{width:500px;height:600px;background:white;border-radius:15px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.3);}
+.header{background:#ff5500;color:white;padding:20px;text-align:center;font-size:28px;}
+.messages{height:450px;overflow-y:auto;padding:15px;background:#fff3e0;}
+.message{margin:10px;padding:10px;border-radius:10px;max-width:80%;}
+.user{background:#ffaa00;color:white;float:right;clear:both;}
+.bot{background:#ff8800;color:white;float:left;clear:both;}
+.input{display:flex;padding:10px;background:#ffaa00;}
+input{flex:1;padding:10px;border:none;border-radius:5px;}
+button{padding:10px 20px;background:#ff5500;color:white;border:none;border-radius:5px;margin-left:10px;cursor:pointer;}
+</style></head>
+<body>
+<div class="chat"><div class="header">😂 Chuckles</div><div class="messages" id="messages"></div><div class="input"><input id="input" placeholder="Tell me a joke..."><button onclick="send()">Send</button></div></div>
+<script>
+const jokes = [
+    "Why don't scientists trust atoms? Because they make up everything!",
+    "What do you call a fake noodle? An impasta.",
+    "Why did the scarecrow win an award? He was outstanding in his field.",
+    "What do you call a bear with no teeth? A gummy bear!",
+    "Why don't eggs tell jokes? They'd crack each other up!",
+    "What do you call a fish with no eyes? A fsh!",
+    "Why did the math book look sad? Because it had too many problems!",
+    "I'm reading a book on anti-gravity. It's impossible to put down!",
+    "I used to be a baker, but I couldn't make enough dough.",
+    "Why don't skeletons fight each other? They don't have the guts.",
+    "What do you call a sleeping bull? A bulldozer.",
+    "Why can't you give Elsa a balloon? Because she will let it go!",
+    "Why did the coffee file a police report? It got mugged.",
+    "What do you call a fish wearing a bowtie? Sofishticated.",
+    "Why don't some couples go to the gym? Because some relationships don't work out.",
+    "I used to play piano by ear, but now I use my hands.",
+    "What do you call a fake noodle? An impasta.",
+    "Why don't scientists trust atoms? Because they make up everything.",
+    "What do you call a fish with no eyes? A fsh.",
+    "Why did the programmer quit his job? Because he didn't get arrays."
+];
+function send(){
+    let msg=document.getElementById('input').value;
+    let m=document.getElementById('messages');
+    m.innerHTML+='<div class="message user">You: '+msg+'</div>';
+    let reply="Ask me to tell you a joke!";
+    if(msg.toLowerCase().includes('joke')) reply=jokes[Math.floor(Math.random()*jokes.length)];
+    setTimeout(()=>m.innerHTML+='<div class="message bot">Chuckles: '+reply+'</div>',400);
+    document.getElementById('input').value='';
+    m.scrollTop=m.scrollHeight;
+}
+</script></body></html>
 ---
 
 # ---------- QUICK GENERATION COMMANDS ----------
-quick weather : [Quick weather bot template]
-quick joke : [Quick joke bot template]
-quick game : [Quick gaming bot template]
-quick tech : [Quick tech bot template]
-quick friendly : [Quick friendly bot template]
+quick weather : Here's a minimal weather bot template: just ask "weather in London" and it replies with a canned response.
+quick joke : Use the Chuckles example above for a full joke bot.
+quick game : Use the RPG bot example above.
+quick tech : Here's a quick tech bot snippet: it responds to keywords like "javascript", "python", etc.
+quick friendly : Use the FriendlyBot example above.
 
 # ---------- BOT GENERATION WIZARD ----------
 start bot wizard : I'll guide you through creating a custom bot step by step!
