@@ -258,7 +258,7 @@ class Character {
 }
 const commands = {
     "create character": (name) => new Character(name),
-    "stats": (char) => \`Level \${char.level} | HP: \${char.hp} | MP: \${char.mp} | Gold: \${char.gold}\`,
+    "stats": (char) => "Level " + char.level + " | HP: " + char.hp + " | MP: " + char.mp + " | Gold: " + char.gold,
     "battle": () => "You fought a goblin and won 10 gold!",
     "shop": "Welcome to the item shop! Potions: 50 gold, Elixirs: 100 gold"
 };
