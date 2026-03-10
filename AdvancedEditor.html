@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PackBot – Advanced Editor (BotX)</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- JSZip for ZIP export/import -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        /* Enhanced Context Menu (exactly as before) */
+        #context-menu {
+            position: absolute;
+            background: rgba(30, 35, 60, 0.98);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            padding: 0.6rem 0;
+            min-width: 260px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            display: none;
+            font-family: 'Inter', system-ui, sans-serif;
+            color: #eef2ff;
+        }
+        #context-menu .menu-section {
+            padding: 0.3rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        #context-menu .menu-section:last-child {
+            border-bottom: none;
+        }
+        #context-menu .menu-header {
+            padding: 0.5rem 1.2rem 0.3rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #a5b4fc;
+            font-weight: 600;
+        }
+        #context-menu .menu-item {
+            padding: 0.6rem 1.5rem;
+            cursor: pointer;
+            transition: background 0.15s;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        #context-menu .menu-item:hover {
+            background: rgba(79, 70, 229, 0.5);
+        }
+        #context-menu .menu-item.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        #context-menu .menu-item .shortcut {
+            margin-left: auto;
+            color: #7f8c8d;
+            font-size: 0.8rem;
+        }
+        #context-menu hr {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin: 0.3rem 0;
+        }
+        /* Modal base style */
+        .packbot-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1e1f2b;
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            z-index: 10001;
+            max-width: 600px;
+            width: 90%;
+            border: 1px solid #4f46e5;
+            font-family: 'Inter', sans-serif;
+        }
+        .packbot-modal h2 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .packbot-modal label {
+            display: block;
+            margin-bottom: 1rem;
+        }
+        .packbot-modal select, .packbot-modal input, .packbot-modal textarea {
+            width: 100%;
+            padding: 0.5rem;
+            background: #2d2f3a;
+            color: white;
+            border: 1px solid #4f46e5;
+            border-radius: 6px;
+            margin-top: 0.3rem;
+        }
+        .packbot-modal button {
+            background: #4f46e5;
+            border: none;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .packbot-modal button:hover {
+            background: #6366f1;
+        }
+        .packbot-modal .button-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+        }
+        /* Find/Replace modal */
+        .find-replace-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        /* Password row and buttons */
+        .password-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin: 0.5rem 0 1rem;
+            flex-wrap: wrap;
+        }
+        .password-row input {
+            flex: 1;
+            min-width: 150px;
+            background: #2d2f3a;
+            border: 1px solid #4f46e5;
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+        }
+        .password-row button {
+            background: #2d2f3a;
+            border: 1px solid #4f46e5;
+            color: white;
+            padding: 0.4rem 1.2rem;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: 0.2s;
+            white-space: nowrap;
+        }
+        .password-row button:hover {
+            background: #4f46e5;
+        }
+        .load-btn {
+            background: #2d2f3a;
+            border: 1px solid #4f46e5;
+            color: white;
+            padding: 0.4rem 1.2rem;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .load-btn:hover {
+            background: #4f46e5;
+        }
+        /* BotX specific */
+        .toolpack-section {
+            margin-top: 1rem;
+            border-top: 1px solid #4f46e5;
+            padding-top: 1rem;
+        }
+        .toolpack-section summary {
+            color: #a5b4fc;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><a href="/">PackBot</a> / Advanced Editor (BotX & ToolPacks)</h1>
+    </header>
+    <main>
+        <div class="mode-switcher">
+            <button id="simple-mode-btn" class="active">Simple Mode</button>
+            <button id="botx-mode-btn">BotX Mode</button>
+        </div>
+
+        <!-- Simple Mode Panel (unchanged) -->
+        <div id="simple-panel" class="panel">
+            <h2>Describe your bot</h2>
+            <textarea id="bot-description" placeholder="e.g. A friendly chatbot that tells jokes and gives weather updates." rows="6"></textarea>
+            <label for="bot-name">Bot name (folder name, no spaces)</label>
+            <input type="text" id="bot-name" placeholder="my-awesome-bot">
+            <div class="password-row">
+                <input type="password" id="bot-password" placeholder="Password (optional, for protection)">
+                <span style="color:#a5b4fc; font-size:0.9rem;">↵ will be stored as Pass.txt</span>
+            </div>
+            <button id="generate-bot">Generate & Push Bot</button>
+            <div id="simple-output"></div>
+        </div>
+
+        <!-- BotX Mode Panel (replaces Code Mode) -->
+        <div id="botx-panel" class="panel hidden">
+            <h2>Code your bot in BotX</h2>
+            <textarea id="botx-editor" placeholder="Write your BotX code here..." rows="12" spellcheck="false">*Import *function =name Ghost*
+*Ghost import modules (custom) =Bots*
+Bots = spawn*Direct=chatbot)
+*TypeFunctions* =UI)
+*UI.Draw.Color.Blue*
+&Bot-CanChat=True&
+*Bot.Language eq default* (Set To True)
+*UI.Set.Scale.100.HG*
+*Logic.File=BOTX* =true)
+*Bot*Response.said "Hi how can I Help you today"
+(User.Response) =said "no thanks no need help"</textarea>
+            
+            <!-- ToolPack quick insert (optional) -->
+            <details class="toolpack-section">
+                <summary>➕ Insert ToolPack example</summary>
+                <textarea id="toolpack-example" rows="6" placeholder="Paste your ToolPack code here...">*ToolPack*Export.Function=Name.UI.Draw.Color.Red.Blue.Green.Purple.Yellow.Black.Brown.Pink.Orange.Gray.Teal* Function.Name=GhostX* Function.UI=Complex* Function.Color=Red.Blue.Green* Function.Draw=Left)Right)Down)Up* Function.Draw.Shapes.++=Sqaure.+++-=Circle.+-=+=Trinangle
+>End<
+>JS<
+console.log("GhostX toolpack loaded");</textarea>
+                <button id="insert-toolpack" style="margin-top:0.5rem;">➕ Insert into BotX</button>
+            </details>
+
+            <!-- Bot name and action row -->
+            <div style="display: flex; gap: 0.5rem; align-items: center; margin: 0.8rem 0; flex-wrap: wrap;">
+                <label for="botx-bot-name" style="color:#a5b4fc;">Bot name</label>
+                <input type="text" id="botx-bot-name" placeholder="my-botx-bot" style="flex:2; min-width:180px;">
+                <button id="load-botx-bot" class="load-btn">📂 Load bot</button>
+                <button id="set-password-btn" class="load-btn">🔐 Set password</button>
+                <button id="compile-push-botx" class="load-btn" style="background:#4f46e5;">Compile & Push</button>
+            </div>
+            <div style="font-size:0.8rem; color:#7f8c8d; margin-top:0.2rem;">
+                <span>💡 BotX code is compiled into logic.txt, index.html, script.js, style.css. Password stored as Pass.txt.</span>
+            </div>
+            <div id="botx-output" style="margin-top:0.5rem;"></div>
+        </div>
+
+        <!-- Preview area -->
+        <section id="preview">
+            <h2>Preview</h2>
+            <iframe id="preview-frame" src="about:blank" sandbox="allow-scripts"></iframe>
+        </section>
+    </main>
+
+    <!-- Custom Context Menu (container) -->
+    <div id="context-menu"></div>
+
+    <!-- Original scripts (external, unchanged) -->
+    <script src="/js/github-api.js"></script>
+    <script src="/js/bot-generator.js"></script>
+    <script src="/js/app.js"></script>
+
+    <!-- Embedded: BotX & ToolPack compiler + full editor logic -->
+    <script>
+        (function() {
+            // ---------- Helper: encrypt/decrypt (unchanged) ----------
+            const SALT = 'packbot_salt_2026';
+            function encryptPath(botName, filePath) {
+                const data = `${botName}|${filePath}`;
+                const salted = SALT + data;
+                return btoa(salted).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+            }
+            function decryptPath(encoded) {
+                try {
+                    const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+                    const salted = atob(base64);
+                    if (!salted.startsWith(SALT)) throw new Error('Invalid salt');
+                    return salted.slice(SALT.length).split('|');
+                } catch {
+                    return null;
+                }
+            }
+            window.encryptPath = encryptPath;
+            window.decryptPath = decryptPath;
+
+            // ---------- DOM Elements ----------
+            const menuEl = document.getElementById('context-menu');
+            const previewFrame = document.getElementById('preview-frame');
+            const simpleBotNameInput = document.getElementById('bot-name');
+            const simpleDescription = document.getElementById('bot-description');
+            const simplePassword = document.getElementById('bot-password');
+            const generateBtn = document.getElementById('generate-bot');
+            const botxBotNameInput = document.getElementById('botx-bot-name');
+            const botxEditor = document.getElementById('botx-editor');
+            const loadBotxBotBtn = document.getElementById('load-botx-bot');
+            const setPasswordBtn = document.getElementById('set-password-btn');
+            const compilePushBtn = document.getElementById('compile-push-botx');
+            const insertToolpackBtn = document.getElementById('insert-toolpack');
+            const toolpackExample = document.getElementById('toolpack-example');
+
+            // Authentication state
+            window.authenticatedBot = null;
+
+            // Settings management (unchanged)
+            const DEFAULT_SETTINGS = {
+                theme: 'dark',
+                fontSize: 14,
+                autosave: true,
+                botPersonality: 'friendly',
+                botResponseStyle: 'casual',
+                botFontFamily: 'Arial, sans-serif',
+                botPrimaryColor: '#4f46e5',
+                botSecondaryColor: '#6c757d',
+                botLanguage: 'en',
+                botTemperature: 0.7,
+                botMaxTokens: 150,
+                botEnableEmoji: true,
+                botEnableMarkdown: false
+            };
+
+            function loadSettings() {
+                const saved = {};
+                for (let key in DEFAULT_SETTINGS) {
+                    const val = localStorage.getItem('packbot_' + key);
+                    if (val !== null) {
+                        if (typeof DEFAULT_SETTINGS[key] === 'boolean') {
+                            saved[key] = val === 'true';
+                        } else if (typeof DEFAULT_SETTINGS[key] === 'number') {
+                            saved[key] = Number(val);
+                        } else {
+                            saved[key] = val;
+                        }
+                    } else {
+                        saved[key] = DEFAULT_SETTINGS[key];
+                    }
+                }
+                return saved;
+            }
+
+            function saveSettings(settings) {
+                for (let key in settings) {
+                    localStorage.setItem('packbot_' + key, settings[key]);
+                }
+                applySettingsToUI(settings);
+            }
+
+            function applySettingsToUI(settings) {
+                document.body.classList.remove('theme-light', 'theme-dark', 'theme-system');
+                document.body.classList.add(`theme-${settings.theme}`);
+                // editor font size not directly applicable here (no file-editor in botx mode)
+            }
+            applySettingsToUI(loadSettings());
+
+            // ---------- BotX Compiler (basic implementation based on examples) ----------
+            function compileBotX(botxCode, botName) {
+                const settings = loadSettings();
+                let logic = '';
+                let primaryColor = settings.botPrimaryColor;
+                let language = settings.botLanguage;
+                let chatEnabled = true;
+                let responses = [];
+
+                // Very simple line-by-line parser
+                const lines = botxCode.split('\n');
+                lines.forEach(line => {
+                    line = line.trim();
+                    // UI Color
+                    if (line.includes('*UI.Draw.Color.')) {
+                        const colorMatch = line.match(/\*UI\.Draw\.Color\.(\w+)\*/);
+                        if (colorMatch) {
+                            const colorName = colorMatch[1].toLowerCase();
+                            // Map to hex (basic)
+                            const colorMap = {
+                                blue: '#4f46e5',
+                                red: '#ef4444',
+                                green: '#10b981',
+                                purple: '#8b5cf6',
+                                yellow: '#f59e0b',
+                                black: '#000000',
+                                white: '#ffffff',
+                                gray: '#6b7280'
+                            };
+                            primaryColor = colorMap[colorName] || primaryColor;
+                        }
+                    }
+                    // Language
+                    if (line.includes('*Bot.Language eq')) {
+                        const langMatch = line.match(/\*Bot\.Language eq (\w+)\*/);
+                        if (langMatch) {
+                            language = langMatch[1];
+                        }
+                    }
+                    // Chat enabled
+                    if (line.includes('&Bot-CanChat=True&')) {
+                        chatEnabled = true;
+                    }
+                    // Response patterns
+                    if (line.includes('*Bot*Response.said')) {
+                        const respMatch = line.match(/\*Bot\*Response\.said "(.+)"/);
+                        if (respMatch) {
+                            responses.push({ type: 'bot', text: respMatch[1] });
+                        }
+                    }
+                    if (line.match(/^\(User\.Response\) =said ".+"/)) {
+                        const userMatch = line.match(/\(User\.Response\) =said "(.+)"/);
+                        if (userMatch) {
+                            responses.push({ type: 'user', text: userMatch[1] });
+                        }
+                    }
+                });
+
+                // Build logic.txt from responses
+                let logicContent = '# BotX compiled logic\n';
+                for (let i = 0; i < responses.length; i++) {
+                    if (responses[i].type === 'bot') {
+                        logicContent += `bot : ${responses[i].text}\n`;
+                    } else if (responses[i].type === 'user') {
+                        logicContent += `${responses[i].text} : \n`; // placeholder
+                    }
+                }
+                // If we have a pair: user then bot, make pattern
+                if (responses.length >= 2 && responses[0].type === 'bot' && responses[1].type === 'user') {
+                    logicContent = `# BotX compiled logic\n${responses[1].text} : ${responses[0].text}\n`;
+                }
+
+                // Build index.html (simple)
+                const indexHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${botName} (BotX)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="chat-container">
+        <header>${botName}</header>
+        <div id="chat-log"></div>
+        <input type="text" id="user-input" placeholder="Type a message...">
+        <button id="send-btn">Send</button>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>`;
+
+                // Build script.js (basic chatbot)
+                const scriptJs = `// BotX compiled script
+const BOT_SETTINGS = ${JSON.stringify(settings, null, 2)};
+const responses = ${JSON.stringify(logicContent)};
+
+document.getElementById('send-btn').addEventListener('click', sendMessage);
+document.getElementById('user-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+});
+
+function sendMessage() {
+    const input = document.getElementById('user-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+    addMessage('user', msg);
+    input.value = '';
+
+    // Simple response logic
+    setTimeout(() => {
+        let reply = "I'm not sure how to respond.";
+        if (responses.includes(msg.toLowerCase())) {
+            reply = "Hi how can I help you today?";
+        }
+        addMessage('bot', reply);
+    }, 500);
+}
+
+function addMessage(sender, text) {
+    const log = document.getElementById('chat-log');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = \`message \${sender}\`;
+    msgDiv.textContent = text;
+    log.appendChild(msgDiv);
+    log.scrollTop = log.scrollHeight;
+}`;
+
+                // Build style.css
+                const styleCss = `body {
+    font-family: ${settings.botFontFamily};
+    background: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+.chat-container {
+    width: 400px;
+    max-width: 90%;
+    background: #16213e;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    overflow: hidden;
+    border: 2px solid ${primaryColor};
+}
+header {
+    background: ${primaryColor};
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    font-weight: bold;
+}
+#chat-log {
+    height: 400px;
+    overflow-y: auto;
+    padding: 1rem;
+    background: #0f3460;
+    color: white;
+}
+.message {
+    margin: 0.5rem 0;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    max-width: 80%;
+}
+.message.user {
+    background: ${primaryColor};
+    margin-left: auto;
+    text-align: right;
+}
+.message.bot {
+    background: ${settings.botSecondaryColor};
+    margin-right: auto;
+}
+#user-input {
+    width: calc(100% - 2rem);
+    margin: 1rem;
+    padding: 0.5rem;
+    border: none;
+    border-radius: 20px;
+    background: #1a1a2e;
+    color: white;
+}
+#send-btn {
+    display: none;
+}`;
+
+                return {
+                    'logic.txt': logicContent,
+                    'index.html': indexHtml,
+                    'script.js': scriptJs,
+                    'style.css': styleCss
+                };
+            }
+
+            // ---------- ToolPack Compiler ----------
+            function compileToolPack(tpCode) {
+                // Very basic parser: extract colors and shapes, then embed the JS after >JS<
+                let colors = [];
+                let shapes = [];
+                let jsCode = '';
+
+                const lines = tpCode.split('\n');
+                let inJs = false;
+                lines.forEach(line => {
+                    line = line.trim();
+                    if (line.startsWith('*ToolPack*')) {
+                        const colorMatch = line.match(/Color\.([\w.]+)/);
+                        if (colorMatch) {
+                            colors = colorMatch[1].split('.');
+                        }
+                    }
+                    if (line.includes('Function.Draw.Shapes.')) {
+                        const shapeMatch = line.match(/Shapes\.\+\+=(.+?)\+\+\-=(.+?)\+\-\+=(.+)/);
+                        if (shapeMatch) {
+                            shapes = [shapeMatch[1], shapeMatch[2], shapeMatch[3]];
+                        }
+                    }
+                    if (line === '>JS<') {
+                        inJs = true;
+                    } else if (inJs) {
+                        jsCode += line + '\n';
+                    }
+                });
+
+                // Generate a JS module
+                return `
+// ToolPack compiled module
+const ToolPack = {
+    colors: ${JSON.stringify(colors)},
+    shapes: ${JSON.stringify(shapes)},
+    init: function() {
+        ${jsCode}
+    }
+};
+ToolPack.init();
+`;
+            }
+
+            // ---------- Insert ToolPack into BotX editor ----------
+            if (insertToolpackBtn) {
+                insertToolpackBtn.addEventListener('click', () => {
+                    const tpCode = toolpackExample.value;
+                    // Insert as a comment or embed? For now, just append at cursor position
+                    const start = botxEditor.selectionStart;
+                    const end = botxEditor.selectionEnd;
+                    const text = botxEditor.value;
+                    const newText = text.substring(0, start) + '\n' + tpCode + '\n' + text.substring(end);
+                    botxEditor.value = newText;
+                });
+            }
+
+            // ---------- Load bot into BotX editor ----------
+            async function loadBotIntoBotXEditor(botName) {
+                if (!botName) return alert('Please enter a bot name.');
+                try {
+                    const data = await window.getBot(botName);
+                    if (!data.files) {
+                        alert('Bot not found or has no files.');
+                        return;
+                    }
+                    const files = data.files;
+
+                    // Check for Pass.txt
+                    const passFile = files['Pass.txt'];
+                    if (passFile !== undefined) {
+                        const storedPassword = passFile.trim();
+                        const userPassword = prompt(`Bot "${botName}" is password protected. Enter password:`);
+                        if (userPassword === null) return;
+                        if (userPassword.trim() !== storedPassword) {
+                            alert('Incorrect password. Access denied.');
+                            return;
+                        }
+                        window.authenticatedBot = botName;
+                    } else {
+                        window.authenticatedBot = botName;
+                    }
+
+                    // For BotX mode, we try to reverse-compile? Not implemented. Instead, we'll just load the raw files? But we have no reverse compiler.
+                    // We'll simply alert that loading is not yet supported for BotX (or we can show the files in a read-only way).
+                    alert('Loading into BotX editor is not supported (no reverse compiler). Use Simple Mode to edit generated files.');
+                } catch (err) {
+                    alert('Error loading bot: ' + err.message);
+                }
+            }
+
+            if (loadBotxBotBtn) {
+                loadBotxBotBtn.addEventListener('click', () => {
+                    const botName = botxBotNameInput.value.trim();
+                    loadBotIntoBotXEditor(botName);
+                });
+            }
+
+            // ---------- Set password (same as before) ----------
+            if (setPasswordBtn) {
+                setPasswordBtn.addEventListener('click', () => {
+                    // Since we don't have currentFiles in BotX mode, we'll store password in a temp object
+                    if (!window.botxFiles) window.botxFiles = {};
+                    const newPass = prompt('Enter new password for this bot (leave empty to remove):');
+                    if (newPass === null) return;
+                    if (newPass.trim() === '') {
+                        if (window.botxFiles && window.botxFiles['Pass.txt']) {
+                            delete window.botxFiles['Pass.txt'];
+                            alert('Password removed.');
+                        } else {
+                            alert('No password set.');
+                        }
+                    } else {
+                        window.botxFiles['Pass.txt'] = newPass.trim();
+                        alert('Password saved as Pass.txt (will be included on push).');
+                    }
+                });
+            }
+
+            // ---------- Compile & Push BotX ----------
+            if (compilePushBtn) {
+                compilePushBtn.addEventListener('click', async () => {
+                    const botName = botxBotNameInput.value.trim();
+                    if (!botName) return alert('Please enter a bot name.');
+                    const botxCode = botxEditor.value;
+
+                    // Check if there are any ToolPack blocks inside and compile them
+                    let combinedJs = '';
+                    if (botxCode.includes('*ToolPack*')) {
+                        // Extract all ToolPack blocks (between *ToolPack* and >End<)
+                        const tpRegex = /\*ToolPack\*.*?>End<.*?>JS<[\s\S]*?(?=\*ToolPack\*|$)/g;
+                        const matches = botxCode.match(tpRegex);
+                        if (matches) {
+                            matches.forEach(tp => {
+                                combinedJs += compileToolPack(tp) + '\n';
+                            });
+                        }
+                    }
+
+                    // Compile main BotX
+                    let files = compileBotX(botxCode, botName);
+                    
+                    // Append ToolPack JS to script.js
+                    if (combinedJs) {
+                        files['script.js'] = combinedJs + '\n' + files['script.js'];
+                    }
+
+                    // Add password if set
+                    if (window.botxFiles && window.botxFiles['Pass.txt']) {
+                        files['Pass.txt'] = window.botxFiles['Pass.txt'];
+                    }
+
+                    // Push to GitHub
+                    try {
+                        await window.pushBot(files, botName);
+                        document.getElementById('botx-output').innerHTML = `<p style="color:green">✅ Bot "${botName}" compiled and pushed successfully!</p>`;
+                        window.loadBotList?.();
+                        window.previewBot?.(botName);
+                    } catch (err) {
+                        document.getElementById('botx-output').innerHTML = `<p style="color:red">❌ Error: ${err.message}</p>`;
+                    }
+                });
+            }
+
+            // ---------- Simple Mode generate (with password) ----------
+            const originalGenerator = window.generateBotFromDescription;
+            window.generateBotFromDescription = function(description, botName, password) {
+                const settings = loadSettings();
+                const files = originalGenerator(description, botName);
+
+                // Enhance logic.txt
+                let logic = files['logic.txt'];
+                logic += `\n# Bot personality: ${settings.botPersonality}`;
+                logic += `\n# Response style: ${settings.botResponseStyle}`;
+                logic += `\n# Language: ${settings.botLanguage}`;
+                if (settings.botEnableEmoji) logic += `\n# Emojis: enabled`;
+                files['logic.txt'] = logic;
+
+                // Enhance script.js
+                let script = files['script.js'];
+                const settingsJS = `\n// Bot settings (from PackBot)\nconst BOT_SETTINGS = ${JSON.stringify(settings, null, 2)};\n`;
+                script = settingsJS + script;
+                files['script.js'] = script;
+
+                // Enhance style.css
+                let css = files['style.css'];
+                css += `\n/* Bot theme */\n`;
+                css += `body { font-family: ${settings.botFontFamily}; }\n`;
+                css += `.chat-container { border-color: ${settings.botPrimaryColor}; }\n`;
+                css += `header { background: ${settings.botPrimaryColor}; }\n`;
+                css += `.message.user { background: ${settings.botPrimaryColor}; }\n`;
+                css += `.message.bot { background: ${settings.botSecondaryColor}; }\n`;
+                files['style.css'] = css;
+
+                if (password && password.trim() !== '') {
+                    files['Pass.txt'] = password.trim();
+                }
+                return files;
+            };
+
+            if (generateBtn) {
+                generateBtn.replaceWith(generateBtn.cloneNode(true));
+                const newGenerateBtn = document.getElementById('generate-bot');
+                newGenerateBtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    const description = simpleDescription.value;
+                    const botName = simpleBotNameInput.value.trim();
+                    const password = simplePassword ? simplePassword.value.trim() : '';
+                    if (!description || !botName) {
+                        alert('Please enter a description and a bot name');
+                        return;
+                    }
+                    const safeBotName = botName.replace(/[^a-zA-Z0-9_-]/g, '');
+                    if (!safeBotName) {
+                        alert('Bot name must contain only letters, numbers, hyphens, underscores');
+                        return;
+                    }
+                    const files = window.generateBotFromDescription(description, safeBotName, password);
+                    try {
+                        await window.pushBot(files, safeBotName);
+                        document.getElementById('simple-output').innerHTML = `<p style="color:green">✅ Bot "${safeBotName}" created with your settings${password ? ' (password protected)' : ''}!</p>`;
+                        window.loadBotList?.();
+                        window.previewBot?.(safeBotName);
+                    } catch (err) {
+                        document.getElementById('simple-output').innerHTML = `<p style="color:red">❌ Error: ${err.message}</p>`;
+                    }
+                });
+            }
+
+            // ---------- Mode switcher ----------
+            const simplePanel = document.getElementById('simple-panel');
+            const botxPanel = document.getElementById('botx-panel');
+            const simpleBtn = document.getElementById('simple-mode-btn');
+            const botxBtn = document.getElementById('botx-mode-btn');
+
+            simpleBtn.addEventListener('click', () => {
+                simplePanel.classList.remove('hidden');
+                botxPanel.classList.add('hidden');
+                simpleBtn.classList.add('active');
+                botxBtn.classList.remove('active');
+            });
+            botxBtn.addEventListener('click', () => {
+                simplePanel.classList.add('hidden');
+                botxPanel.classList.remove('hidden');
+                simpleBtn.classList.remove('active');
+                botxBtn.classList.add('active');
+            });
+
+            // ---------- Context Menu (simplified for BotX mode) ----------
+            // We'll reuse the same context menu structure but adapt for BotX editor.
+            function showContextMenu(e) {
+                e.preventDefault();
+                const target = e.target;
+                const isBotxEditor = target.id === 'botx-editor';
+                const isInput = target.closest('input[type="text"]');
+                const isEmptySpace = !isBotxEditor && !isInput && !target.closest('button');
+
+                menuEl.innerHTML = '';
+
+                if (isBotxEditor) {
+                    menuEl.appendChild(createMenuHeader('BOTX EDITOR'));
+                    menuEl.appendChild(createMenuItem('✂️ Cut', () => {
+                        document.execCommand('cut');
+                    }, 'Ctrl+X'));
+                    menuEl.appendChild(createMenuItem('📋 Copy', () => {
+                        document.execCommand('copy');
+                    }, 'Ctrl+C'));
+                    menuEl.appendChild(createMenuItem('📋 Paste', () => {
+                        navigator.clipboard.readText().then(text => {
+                            const start = botxEditor.selectionStart;
+                            const end = botxEditor.selectionEnd;
+                            botxEditor.setRangeText(text, start, end, 'end');
+                        });
+                    }, 'Ctrl+V'));
+                    menuEl.appendChild(createMenuItem('🔍 Find/Replace...', () => {
+                        alert('Find/Replace not implemented in BotX mode.');
+                    }, 'Ctrl+F'));
+                } else if (isInput) {
+                    menuEl.appendChild(createMenuHeader('BOT NAME'));
+                    menuEl.appendChild(createMenuItem('✅ Validate', () => {
+                        const name = botxBotNameInput.value.trim();
+                        const safe = name.replace(/[^a-zA-Z0-9_-]/g, '');
+                        if (name !== safe) alert(`Invalid chars. Suggested: "${safe}"`);
+                        else alert('Name is valid');
+                    }));
+                    menuEl.appendChild(createMenuItem('📋 Copy', () => navigator.clipboard.writeText(botxBotNameInput.value)));
+                    menuEl.appendChild(createMenuItem('🎲 Random', () => {
+                        const adj = ['cool','smart','fast','happy','super','awesome','tiny'];
+                        const noun = ['bot','assistant','friend','helper','agent','droid'];
+                        botxBotNameInput.value = adj[Math.floor(Math.random()*adj.length)] + '-' + noun[Math.floor(Math.random()*noun.length)] + '-' + Math.floor(Math.random()*100);
+                    }));
+                } else if (isEmptySpace) {
+                    menuEl.appendChild(createMenuHeader('GLOBAL'));
+                    menuEl.appendChild(createMenuItem('🚀 Compile & Push', () => compilePushBtn.click(), 'Ctrl+Shift+P'));
+                    menuEl.appendChild(createMenuItem('👁️ Preview bot', () => {
+                        const name = botxBotNameInput.value.trim();
+                        if (name) window.previewBot?.(name);
+                    }, 'Ctrl+P'));
+                    menuEl.appendChild(createMenuItem('⚙️ Preferences', showSettingsModal));
+                }
+
+                menuEl.style.left = e.pageX + 'px';
+                menuEl.style.top = e.pageY + 'px';
+                menuEl.style.display = 'block';
+            }
+
+            function createMenuItem(label, onClick, shortcut = '', icon = '', disabled = false) {
+                const item = document.createElement('div');
+                item.className = 'menu-item' + (disabled ? ' disabled' : '');
+                item.innerHTML = icon ? `<span>${icon}</span>${label}` : label;
+                if (shortcut) {
+                    const shortSpan = document.createElement('span');
+                    shortSpan.className = 'shortcut';
+                    shortSpan.textContent = shortcut;
+                    item.appendChild(shortSpan);
+                }
+                if (!disabled) {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        onClick();
+                        menuEl.style.display = 'none';
+                    });
+                }
+                return item;
+            }
+
+            function createMenuHeader(text) {
+                const header = document.createElement('div');
+                header.className = 'menu-header';
+                header.textContent = text;
+                return header;
+            }
+
+            document.addEventListener('contextmenu', showContextMenu);
+            document.addEventListener('click', () => menuEl.style.display = 'none');
+            window.addEventListener('scroll', () => menuEl.style.display = 'none');
+            window.addEventListener('resize', () => menuEl.style.display = 'none');
+
+            // Settings modal (simplified)
+            function showSettingsModal() {
+                const settings = loadSettings();
+                const modal = document.createElement('div');
+                modal.className = 'packbot-modal';
+                modal.innerHTML = `
+                    <h2>⚙️ Preferences</h2>
+                    <div style="max-height:70vh; overflow-y:auto; padding-right:0.5rem;">
+                        <label>Theme
+                            <select id="settings-theme">
+                                <option value="dark" ${settings.theme==='dark'?'selected':''}>Dark</option>
+                                <option value="light" ${settings.theme==='light'?'selected':''}>Light</option>
+                                <option value="system" ${settings.theme==='system'?'selected':''}>System</option>
+                            </select>
+                        </label>
+                        <label>Editor Font Size <input type="number" id="settings-fontsize" value="${settings.fontSize}" min="8" max="24"></label>
+                        <label>Autosave <input type="checkbox" id="settings-autosave" ${settings.autosave?'checked':''}></label>
+                        <h3 style="margin:1rem 0 0.5rem; color:#a5b4fc;">Bot Defaults</h3>
+                        <label>Personality
+                            <select id="settings-botPersonality">
+                                <option value="friendly" ${settings.botPersonality==='friendly'?'selected':''}>Friendly</option>
+                                <option value="professional" ${settings.botPersonality==='professional'?'selected':''}>Professional</option>
+                                <option value="humorous" ${settings.botPersonality==='humorous'?'selected':''}>Humorous</option>
+                                <option value="sarcastic" ${settings.botPersonality==='sarcastic'?'selected':''}>Sarcastic</option>
+                            </select>
+                        </label>
+                        <label>Response Style
+                            <select id="settings-botResponseStyle">
+                                <option value="casual" ${settings.botResponseStyle==='casual'?'selected':''}>Casual</option>
+                                <option value="formal" ${settings.botResponseStyle==='formal'?'selected':''}>Formal</option>
+                                <option value="concise" ${settings.botResponseStyle==='concise'?'selected':''}>Concise</option>
+                                <option value="detailed" ${settings.botResponseStyle==='detailed'?'selected':''}>Detailed</option>
+                            </select>
+                        </label>
+                        <label>Font Family <input type="text" id="settings-botFontFamily" value="${settings.botFontFamily}"></label>
+                        <label>Primary Color <input type="color" id="settings-botPrimaryColor" value="${settings.botPrimaryColor}"></label>
+                        <label>Secondary Color <input type="color" id="settings-botSecondaryColor" value="${settings.botSecondaryColor}"></label>
+                        <label>Language
+                            <select id="settings-botLanguage">
+                                <option value="en" ${settings.botLanguage==='en'?'selected':''}>English</option>
+                                <option value="es" ${settings.botLanguage==='es'?'selected':''}>Spanish</option>
+                                <option value="fr" ${settings.botLanguage==='fr'?'selected':''}>French</option>
+                                <option value="de" ${settings.botLanguage==='de'?'selected':''}>German</option>
+                            </select>
+                        </label>
+                        <label>Temperature <input type="number" id="settings-botTemperature" step="0.1" min="0" max="2" value="${settings.botTemperature}"></label>
+                        <label>Max Tokens <input type="number" id="settings-botMaxTokens" value="${settings.botMaxTokens}"></label>
+                        <label><input type="checkbox" id="settings-botEnableEmoji" ${settings.botEnableEmoji?'checked':''}> Enable emojis</label>
+                        <label><input type="checkbox" id="settings-botEnableMarkdown" ${settings.botEnableMarkdown?'checked':''}> Enable Markdown</label>
+                    </div>
+                    <div class="button-group">
+                        <button id="settings-save">Save</button>
+                        <button id="settings-cancel">Cancel</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                const closeModal = () => modal.remove();
+                document.getElementById('settings-cancel').addEventListener('click', closeModal);
+                document.getElementById('settings-save').addEventListener('click', () => {
+                    const newSettings = {
+                        theme: document.getElementById('settings-theme').value,
+                        fontSize: parseInt(document.getElementById('settings-fontsize').value),
+                        autosave: document.getElementById('settings-autosave').checked,
+                        botPersonality: document.getElementById('settings-botPersonality').value,
+                        botResponseStyle: document.getElementById('settings-botResponseStyle').value,
+                        botFontFamily: document.getElementById('settings-botFontFamily').value,
+                        botPrimaryColor: document.getElementById('settings-botPrimaryColor').value,
+                        botSecondaryColor: document.getElementById('settings-botSecondaryColor').value,
+                        botLanguage: document.getElementById('settings-botLanguage').value,
+                        botTemperature: parseFloat(document.getElementById('settings-botTemperature').value),
+                        botMaxTokens: parseInt(document.getElementById('settings-botMaxTokens').value),
+                        botEnableEmoji: document.getElementById('settings-botEnableEmoji').checked,
+                        botEnableMarkdown: document.getElementById('settings-botEnableMarkdown').checked
+                    };
+                    saveSettings(newSettings);
+                    closeModal();
+                });
+                modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+            }
+        })();
+    </script>
+</body>
+</html>
