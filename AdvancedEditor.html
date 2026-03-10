@@ -347,25 +347,28 @@ console.log("GhostX toolpack loaded");</textarea>
             }
             applySettingsToUI(loadSettings());
 
-            // ---------- BotX Compiler (basic implementation based on examples) ----------
+            // ---------- BotX Compiler (full implementation) ----------
             function compileBotX(botxCode, botName) {
                 const settings = loadSettings();
-                let logic = '';
                 let primaryColor = settings.botPrimaryColor;
                 let language = settings.botLanguage;
                 let chatEnabled = true;
-                let responses = [];
+                let scale = 100; // default scale
+                let logicPatterns = []; // array of {user, bot} pairs
+                let currentBotResponse = null;
+                let importedToolPacks = [];
 
-                // Very simple line-by-line parser
+                // Simple line-by-line parser (respects your exact syntax)
                 const lines = botxCode.split('\n');
                 lines.forEach(line => {
                     line = line.trim();
+                    if (!line) return;
+
                     // UI Color
                     if (line.includes('*UI.Draw.Color.')) {
                         const colorMatch = line.match(/\*UI\.Draw\.Color\.(\w+)\*/);
                         if (colorMatch) {
                             const colorName = colorMatch[1].toLowerCase();
-                            // Map to hex (basic)
                             const colorMap = {
                                 blue: '#4f46e5',
                                 red: '#ef4444',
@@ -374,11 +377,16 @@ console.log("GhostX toolpack loaded");</textarea>
                                 yellow: '#f59e0b',
                                 black: '#000000',
                                 white: '#ffffff',
-                                gray: '#6b7280'
+                                gray: '#6b7280',
+                                teal: '#14b8a6',
+                                orange: '#f97316',
+                                pink: '#ec4899',
+                                brown: '#8b5a2b'
                             };
                             primaryColor = colorMap[colorName] || primaryColor;
                         }
                     }
+
                     // Language
                     if (line.includes('*Bot.Language eq')) {
                         const langMatch = line.match(/\*Bot\.Language eq (\w+)\*/);
@@ -386,42 +394,65 @@ console.log("GhostX toolpack loaded");</textarea>
                             language = langMatch[1];
                         }
                     }
+
                     // Chat enabled
                     if (line.includes('&Bot-CanChat=True&')) {
                         chatEnabled = true;
                     }
-                    // Response patterns
+                    if (line.includes('&Bot-CanChat=False&')) {
+                        chatEnabled = false;
+                    }
+
+                    // Scale
+                    if (line.includes('*UI.Set.Scale.')) {
+                        const scaleMatch = line.match(/\*UI\.Set\.Scale\.(\d+)\.\w+\*/);
+                        if (scaleMatch) {
+                            scale = parseInt(scaleMatch[1], 10);
+                        }
+                    }
+
+                    // Bot response
                     if (line.includes('*Bot*Response.said')) {
                         const respMatch = line.match(/\*Bot\*Response\.said "(.+)"/);
                         if (respMatch) {
-                            responses.push({ type: 'bot', text: respMatch[1] });
+                            currentBotResponse = respMatch[1];
                         }
                     }
+
+                    // User response pattern
                     if (line.match(/^\(User\.Response\) =said ".+"/)) {
                         const userMatch = line.match(/\(User\.Response\) =said "(.+)"/);
-                        if (userMatch) {
-                            responses.push({ type: 'user', text: userMatch[1] });
+                        if (userMatch && currentBotResponse) {
+                            logicPatterns.push({
+                                user: userMatch[1],
+                                bot: currentBotResponse
+                            });
+                            currentBotResponse = null; // reset for next pair
+                        }
+                    }
+
+                    // Import toolpack
+                    if (line.startsWith('*Import *function =name ')) {
+                        const importMatch = line.match(/\*Import \*function =name (\w+)\*/);
+                        if (importMatch) {
+                            importedToolPacks.push(importMatch[1]);
                         }
                     }
                 });
 
-                // Build logic.txt from responses
+                // Build logic.txt from patterns
                 let logicContent = '# BotX compiled logic\n';
-                for (let i = 0; i < responses.length; i++) {
-                    if (responses[i].type === 'bot') {
-                        logicContent += `bot : ${responses[i].text}\n`;
-                    } else if (responses[i].type === 'user') {
-                        logicContent += `${responses[i].text} : \n`; // placeholder
-                    }
-                }
-                // If we have a pair: user then bot, make pattern
-                if (responses.length >= 2 && responses[0].type === 'bot' && responses[1].type === 'user') {
-                    logicContent = `# BotX compiled logic\n${responses[1].text} : ${responses[0].text}\n`;
+                logicPatterns.forEach(p => {
+                    logicContent += `${p.user} : ${p.bot}\n`;
+                });
+                if (logicPatterns.length === 0) {
+                    // fallback
+                    logicContent += 'hello : Hi how can I help you today?\n';
                 }
 
-                // Build index.html (simple)
+                // Build index.html with dynamic scale
                 const indexHtml = `<!DOCTYPE html>
-<html lang="en">
+<html lang="${language}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -429,7 +460,7 @@ console.log("GhostX toolpack loaded");</textarea>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="chat-container">
+    <div class="chat-container" style="transform: scale(${scale/100}); transform-origin: top;">
         <header>${botName}</header>
         <div id="chat-log"></div>
         <input type="text" id="user-input" placeholder="Type a message...">
@@ -439,10 +470,11 @@ console.log("GhostX toolpack loaded");</textarea>
 </body>
 </html>`;
 
-                // Build script.js (basic chatbot)
+                // Build script.js (advanced chatbot with pattern matching)
+                const patternsJson = JSON.stringify(logicPatterns);
                 const scriptJs = `// BotX compiled script
 const BOT_SETTINGS = ${JSON.stringify(settings, null, 2)};
-const responses = ${JSON.stringify(logicContent)};
+const patterns = ${patternsJson};
 
 document.getElementById('send-btn').addEventListener('click', sendMessage);
 document.getElementById('user-input').addEventListener('keypress', (e) => {
@@ -451,19 +483,20 @@ document.getElementById('user-input').addEventListener('keypress', (e) => {
 
 function sendMessage() {
     const input = document.getElementById('user-input');
-    const msg = input.value.trim();
+    const msg = input.value.trim().toLowerCase();
     if (!msg) return;
     addMessage('user', msg);
     input.value = '';
 
-    // Simple response logic
-    setTimeout(() => {
-        let reply = "I'm not sure how to respond.";
-        if (responses.includes(msg.toLowerCase())) {
-            reply = "Hi how can I help you today?";
+    // Find matching pattern
+    let reply = "I'm not sure how to respond.";
+    for (let p of patterns) {
+        if (msg.includes(p.user.toLowerCase())) {
+            reply = p.bot;
+            break;
         }
-        addMessage('bot', reply);
-    }, 500);
+    }
+    setTimeout(() => addMessage('bot', reply), 500);
 }
 
 function addMessage(sender, text) {
@@ -540,51 +573,82 @@ header {
                     'logic.txt': logicContent,
                     'index.html': indexHtml,
                     'script.js': scriptJs,
-                    'style.css': styleCss
+                    'style.css': styleCss,
+                    importedToolPacks
                 };
             }
 
-            // ---------- ToolPack Compiler ----------
+            // ---------- ToolPack Compiler (full implementation) ----------
             function compileToolPack(tpCode) {
-                // Very basic parser: extract colors and shapes, then embed the JS after >JS<
-                let colors = [];
-                let shapes = [];
-                let jsCode = '';
+                // Parse the toolpack definition
+                let toolpack = {
+                    name: 'Unknown',
+                    ui: 'Basic',
+                    colors: [],
+                    draw: [],
+                    shapes: {},
+                    jsCode: ''
+                };
 
                 const lines = tpCode.split('\n');
                 let inJs = false;
                 lines.forEach(line => {
                     line = line.trim();
                     if (line.startsWith('*ToolPack*')) {
-                        const colorMatch = line.match(/Color\.([\w.]+)/);
-                        if (colorMatch) {
-                            colors = colorMatch[1].split('.');
+                        // Extract export list
+                        const exportMatch = line.match(/Export\.Function=(.+?)\*/);
+                        if (exportMatch) {
+                            // e.g., "Name.UI.Draw.Color.Red.Blue.Green.Purple..."
+                            const parts = exportMatch[1].split('.');
+                            // Not fully used, but we can store
                         }
                     }
+                    if (line.includes('Function.Name=')) {
+                        const nameMatch = line.match(/Function\.Name=(\w+)\*/);
+                        if (nameMatch) toolpack.name = nameMatch[1];
+                    }
+                    if (line.includes('Function.UI=')) {
+                        const uiMatch = line.match(/Function\.UI=(\w+)\*/);
+                        if (uiMatch) toolpack.ui = uiMatch[1];
+                    }
+                    if (line.includes('Function.Color=')) {
+                        const colorMatch = line.match(/Function\.Color=([\w.]+)\*/);
+                        if (colorMatch) toolpack.colors = colorMatch[1].split('.');
+                    }
+                    if (line.includes('Function.Draw=')) {
+                        const drawMatch = line.match(/Function\.Draw=([\w)]+)\*/);
+                        if (drawMatch) toolpack.draw = drawMatch[1].split(')').filter(Boolean);
+                    }
                     if (line.includes('Function.Draw.Shapes.')) {
+                        // Parse shapes like ++=Sqaure.+++-=Circle.+-=+=Trinangle
                         const shapeMatch = line.match(/Shapes\.\+\+=(.+?)\+\+\-=(.+?)\+\-\+=(.+)/);
                         if (shapeMatch) {
-                            shapes = [shapeMatch[1], shapeMatch[2], shapeMatch[3]];
+                            toolpack.shapes.square = shapeMatch[1];
+                            toolpack.shapes.circle = shapeMatch[2];
+                            toolpack.shapes.triangle = shapeMatch[3];
                         }
                     }
                     if (line === '>JS<') {
                         inJs = true;
                     } else if (inJs) {
-                        jsCode += line + '\n';
+                        toolpack.jsCode += line + '\n';
                     }
                 });
 
-                // Generate a JS module
+                // Generate a JavaScript module
                 return `
-// ToolPack compiled module
-const ToolPack = {
-    colors: ${JSON.stringify(colors)},
-    shapes: ${JSON.stringify(shapes)},
+// ToolPack: ${toolpack.name}
+const ToolPack_${toolpack.name} = {
+    name: '${toolpack.name}',
+    ui: '${toolpack.ui}',
+    colors: ${JSON.stringify(toolpack.colors)},
+    draw: ${JSON.stringify(toolpack.draw)},
+    shapes: ${JSON.stringify(toolpack.shapes)},
     init: function() {
-        ${jsCode}
+        ${toolpack.jsCode}
     }
 };
-ToolPack.init();
+ToolPack_${toolpack.name}.init();
 `;
             }
 
@@ -592,7 +656,6 @@ ToolPack.init();
             if (insertToolpackBtn) {
                 insertToolpackBtn.addEventListener('click', () => {
                     const tpCode = toolpackExample.value;
-                    // Insert as a comment or embed? For now, just append at cursor position
                     const start = botxEditor.selectionStart;
                     const end = botxEditor.selectionEnd;
                     const text = botxEditor.value;
@@ -627,8 +690,7 @@ ToolPack.init();
                         window.authenticatedBot = botName;
                     }
 
-                    // For BotX mode, we try to reverse-compile? Not implemented. Instead, we'll just load the raw files? But we have no reverse compiler.
-                    // We'll simply alert that loading is not yet supported for BotX (or we can show the files in a read-only way).
+                    // We cannot reverse-compile to BotX, so we notify user
                     alert('Loading into BotX editor is not supported (no reverse compiler). Use Simple Mode to edit generated files.');
                 } catch (err) {
                     alert('Error loading bot: ' + err.message);
@@ -645,7 +707,6 @@ ToolPack.init();
             // ---------- Set password (same as before) ----------
             if (setPasswordBtn) {
                 setPasswordBtn.addEventListener('click', () => {
-                    // Since we don't have currentFiles in BotX mode, we'll store password in a temp object
                     if (!window.botxFiles) window.botxFiles = {};
                     const newPass = prompt('Enter new password for this bot (leave empty to remove):');
                     if (newPass === null) return;
@@ -670,17 +731,14 @@ ToolPack.init();
                     if (!botName) return alert('Please enter a bot name.');
                     const botxCode = botxEditor.value;
 
-                    // Check if there are any ToolPack blocks inside and compile them
+                    // Extract and compile all ToolPack blocks
                     let combinedJs = '';
-                    if (botxCode.includes('*ToolPack*')) {
-                        // Extract all ToolPack blocks (between *ToolPack* and >End<)
-                        const tpRegex = /\*ToolPack\*.*?>End<.*?>JS<[\s\S]*?(?=\*ToolPack\*|$)/g;
-                        const matches = botxCode.match(tpRegex);
-                        if (matches) {
-                            matches.forEach(tp => {
-                                combinedJs += compileToolPack(tp) + '\n';
-                            });
-                        }
+                    const tpRegex = /\*ToolPack\*[\s\S]*?>End<[\s\S]*?>JS<[\s\S]*?(?=\*ToolPack\*|$)/g;
+                    const matches = botxCode.match(tpRegex);
+                    if (matches) {
+                        matches.forEach(tp => {
+                            combinedJs += compileToolPack(tp) + '\n';
+                        });
                     }
 
                     // Compile main BotX
@@ -793,7 +851,6 @@ ToolPack.init();
             });
 
             // ---------- Context Menu (simplified for BotX mode) ----------
-            // We'll reuse the same context menu structure but adapt for BotX editor.
             function showContextMenu(e) {
                 e.preventDefault();
                 const target = e.target;
